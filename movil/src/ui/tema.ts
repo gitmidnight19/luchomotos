@@ -1,5 +1,5 @@
 /** Tema visual de la app (Material Design 3 sobre React Native Paper). */
-import { MD3LightTheme, configureFonts } from 'react-native-paper';
+import { configureFonts, MD3LightTheme } from 'react-native-paper';
 
 export const colores = {
   marca: '#1d4ed8',

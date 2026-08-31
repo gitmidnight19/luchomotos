@@ -1,4 +1,4 @@
-# Instalar los ganchos una vez:  .venv/Scripts/pre-commit install
+# Instalar los ganchos una vez:  npm run hooks
 default_install_hook_types: [pre-commit]
 fail_fast: false
 
@@ -32,19 +32,19 @@ repos:
     hooks:
       - id: mypy
         name: mypy (backend)
-        entry: bash -c '.venv/Scripts/python.exe -m mypy backend/app'
+        entry: bash -c 'uv run --directory backend mypy app'
         language: system
         pass_filenames: false
         files: ^backend/app/.*\.py$
 
-      # Se ejecuta con cwd=movil para que respete movil/.prettierignore,
-      # que excluye el contrato generado openapi.d.ts.
-      - id: prettier
-        name: prettier (movil)
-        entry: bash -c 'cd movil && npx prettier --write "app/**/*.{ts,tsx}" "src/**/*.{ts,tsx}"'
+      # Formato + orden de imports. biome.json excluye el contrato generado
+      # openapi.d.ts: si lo tocara, el job `contrato` del CI daria falso positivo.
+      - id: biome
+        name: biome (movil)
+        entry: bash -c 'cd movil && npx biome check --write app src'
         language: system
         pass_filenames: false
-        files: ^movil/(app|src)/.*\.(ts|tsx)$
+        files: ^movil/(app|src)/.*\.(ts|tsx|json)$
 
       - id: eslint
         name: eslint (movil)

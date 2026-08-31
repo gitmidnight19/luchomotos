@@ -6,7 +6,7 @@ import { Button, Dialog, Portal, Text } from 'react-native-paper';
 
 import { useCartera, usePagos, useRegistrarPago, useTraslado } from '../src/api/hooks';
 import type { MetodoPago } from '../src/api/tipos';
-import { aNumero, dinero, dineroCorto, fechaCorta, primerDiaMes, hoy } from '../src/lib/formato';
+import { aNumero, dinero, dineroCorto, fechaCorta, hoy, primerDiaMes } from '../src/lib/formato';
 import {
   CampoNumero,
   CampoTexto,

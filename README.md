@@ -52,17 +52,23 @@ actualizar el contrato rompe la build en vez de fallar en runtime.
 
 ## Puesta en marcha
 
+Requiere [uv](https://docs.astral.sh/uv/) y Node 22+:
+
 ```bash
-python -m venv .venv
-npm run setup            # pip install -e ./backend[dev] + npm install en movil
+npm run setup            # uv sync (desde uv.lock) + npm install en movil
+npm run hooks            # instala los ganchos de pre-commit
 npm run api:migrate      # alembic upgrade head
 ```
+
+El entorno de Python lo gestiona **uv** desde `backend/uv.lock`, que sí se
+versiona: `uv sync --locked` reproduce exactamente las mismas versiones.
 
 ## Tareas
 
 | Comando | Qué hace |
 |---|---|
 | `npm run api` | uvicorn con `--reload` en `0.0.0.0:8321` |
+| `npm run hooks` | instala los ganchos de pre-commit |
 | `npm run api:test` / `api:cov` | pytest / con cobertura |
 | `npm run api:lint` / `api:fmt` / `api:types` | ruff check / ruff format / mypy |
 | `npm run api:migrate` | `alembic upgrade head` |
@@ -149,7 +155,17 @@ cambiarla hay que reiniciar con `expo start -c`.
 .venv/Scripts/pre-commit install     # una vez por clon
 ```
 
-Corren ruff (+fix), ruff-format, mypy, prettier y eslint sobre lo que se
-commitea, más las verificaciones básicas (YAML/TOML/JSON válidos, sin claves
-privadas, sin conflictos sin resolver, LF). Son idempotentes: una segunda
-pasada no modifica nada.
+Corren ruff (+fix), ruff-format, mypy, Biome y ESLint sobre lo que se commitea,
+más las verificaciones básicas (YAML/TOML/JSON válidos, sin claves privadas, sin
+conflictos sin resolver, LF). Son idempotentes: una segunda pasada no modifica nada.
+
+## Utillaje
+
+| Herramienta | Para qué | Por qué esa |
+|---|---|---|
+| **uv** | entorno y dependencias de Python | lockfile reproducible; resuelve e instala en segundos |
+| **ruff** | linter y formateador de Python | reemplaza flake8+isort+black en un binario |
+| **mypy** | tipos de Python | el modo estricto atrapa `str` del ORM colándose donde el esquema exige `Literal` |
+| **Biome** | formato del móvil | sustituye a Prettier: 32 archivos en ~116 ms |
+| **ESLint** + `eslint-config-expo` | linting del móvil | **no** lo reemplaza Biome: aporta reglas de React Native que Biome no cubre |
+| **openapi-typescript** | contrato TS | se genera del esquema; el CI falla si diverge |

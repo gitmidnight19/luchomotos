@@ -1,12 +1,10 @@
-// Configuracion plana de ESLint 9. `eslint-config-expo/flat` ya trae los
-// plugins de TypeScript, React e imports con reglas afinadas para Expo;
-// `eslint-config-prettier` apaga las que chocan con el formateador.
+// Configuracion plana de ESLint 9. Aqui vive SOLO el linting: `eslint-config-expo`
+// aporta las reglas especificas de React Native que Biome no cubre, y por eso no se
+// reemplaza. El formato lo lleva Biome (biome.json).
 const expo = require('eslint-config-expo/flat');
-const prettier = require('eslint-config-prettier');
 
 module.exports = [
   ...expo,
-  prettier,
   {
     ignores: ['node_modules/**', '.expo/**', 'dist/**', 'web-build/**', 'src/api/openapi.d.ts'],
   },
