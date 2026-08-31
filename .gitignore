@@ -1,0 +1,33 @@
+# ---- secretos y configuracion local ----
+.env
+movil/.env
+
+# ---- datos de la aplicacion ----
+data/
+*.db
+*.db-wal
+*.db-shm
+
+# ---- python ----
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# ---- node / expo ----
+node_modules/
+.expo/
+dist/
+web-build/
+*.tsbuildinfo
+
+# ---- editores y sistema ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

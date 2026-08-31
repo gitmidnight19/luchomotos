@@ -1,0 +1,24 @@
+{
+  "name": "taller-contable",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Sistema contable para taller de motos: API FastAPI + app Expo",
+  "scripts": {
+    "api": "\"./.venv/Scripts/python.exe\" -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8321 --reload",
+    "api:test": "cd backend && \"../.venv/Scripts/python.exe\" -m pytest",
+    "api:cov": "cd backend && \"../.venv/Scripts/python.exe\" -m pytest --cov=app --cov-report=term-missing",
+    "api:lint": "cd backend && \"../.venv/Scripts/ruff.exe\" check app tests",
+    "api:fmt": "cd backend && \"../.venv/Scripts/ruff.exe\" format app tests",
+    "api:types": "cd backend && \"../.venv/Scripts/python.exe\" -m mypy app",
+    "api:migrate": "cd backend && \"../.venv/Scripts/alembic.exe\" upgrade head",
+    "api:revision": "cd backend && \"../.venv/Scripts/alembic.exe\" revision --autogenerate -m",
+    "app": "cd movil && npm start",
+    "app:lint": "cd movil && npm run lint",
+    "app:types": "cd movil && npm run typecheck",
+    "app:contract": "cd movil && npm run api:types",
+    "check": "npm run api:lint && npm run api:test && npm run app:lint && npm run app:types",
+    "setup": "\"./.venv/Scripts/python.exe\" -m pip install -e \"./backend[dev]\" && cd movil && npm install",
+    "clean": "node scripts/clean.mjs",
+    "clean:deps": "node scripts/clean.mjs --deps"
+  }
+}

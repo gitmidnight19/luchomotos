@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: API (ruff · mypy · pytest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Instalar dependencias
+        run: pip install -e ".[dev]"
+
+      - name: Linter
+        run: ruff check app tests
+
+      - name: Formato
+        run: ruff format --check app tests
+
+      - name: Tipos
+        run: mypy app
+
+      - name: Pruebas
+        run: pytest --cov=app --cov-report=term-missing --cov-fail-under=90
+
+      - name: Las migraciones reflejan los modelos
+        run: |
+          alembic upgrade head
+          alembic check
+
+  movil:
+    name: App (eslint · tsc)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: movil
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: movil/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Linter
+        run: npm run lint
+
+      - name: Tipos
+        run: npm run typecheck
+
+  contrato:
+    name: El contrato TS esta al dia con la API
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: movil/package-lock.json
+
+      - run: pip install -e "./backend[dev]"
+      - run: npm ci
+        working-directory: movil
+
+      # Regenera los tipos desde el esquema y falla si difieren de lo commiteado:
+      # asi no puede colarse un cambio de API sin actualizar el frontend.
+      - name: Regenerar y comparar
+        run: |
+          python -c "import json, sys; sys.path.insert(0,'backend'); from app.main import app; print(json.dumps(app.openapi()))" > /tmp/openapi.json
+          npx openapi-typescript /tmp/openapi.json -o src/api/openapi.d.ts
+          git diff --exit-code src/api/openapi.d.ts
+        working-directory: movil

@@ -1,0 +1,18 @@
+# Normaliza a LF en el repositorio sin importar la plataforma ni el
+# core.autocrlf local. Sin esto, en Windows cada archivo aparece como
+# modificado por completo y el job de contrato del CI da falso positivo.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.db binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+
+# Generado: no cuenta para las estadisticas del repo ni para la revision.
+movil/src/api/openapi.d.ts linguist-generated=true
+movil/package-lock.json    linguist-generated=true

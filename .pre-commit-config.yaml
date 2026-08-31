@@ -1,0 +1,54 @@
+# Instalar los ganchos una vez:  .venv/Scripts/pre-commit install
+default_install_hook_types: [pre-commit]
+fail_fast: false
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+        exclude: ^movil/tsconfig\.json$   # admite comentarios
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=1024]
+      - id: detect-private-key
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.5
+    hooks:
+      - id: ruff
+        args: [--fix]
+        files: ^backend/
+      - id: ruff-format
+        files: ^backend/
+
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy (backend)
+        entry: bash -c '.venv/Scripts/python.exe -m mypy backend/app'
+        language: system
+        pass_filenames: false
+        files: ^backend/app/.*\.py$
+
+      # Se ejecuta con cwd=movil para que respete movil/.prettierignore,
+      # que excluye el contrato generado openapi.d.ts.
+      - id: prettier
+        name: prettier (movil)
+        entry: bash -c 'cd movil && npx prettier --write "app/**/*.{ts,tsx}" "src/**/*.{ts,tsx}"'
+        language: system
+        pass_filenames: false
+        files: ^movil/(app|src)/.*\.(ts|tsx)$
+
+      - id: eslint
+        name: eslint (movil)
+        entry: bash -c 'cd movil && npx eslint .'
+        language: system
+        pass_filenames: false
+        files: ^movil/(app|src)/.*\.(ts|tsx)$
