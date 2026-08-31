@@ -5,7 +5,7 @@ import { Button, Dialog, FAB, Portal } from 'react-native-paper';
 
 import { useBorrarServicio, useGuardarServicio, useServicios } from '../src/api/hooks';
 import type { Servicio } from '../src/api/tipos';
-import { aNumero, dinero } from '../src/lib/formato';
+import { aCentavos, aNumero, dinero, enPesos } from '../src/lib/formato';
 import {
   CampoNumero,
   CampoTexto,
@@ -32,7 +32,7 @@ export default function Servicios() {
             id: s.id,
             codigo: s.codigo ?? '',
             nombre: s.nombre,
-            precio: String(s.precio),
+            precio: String(enPesos(s.precio)),
             duracion_min: String(s.duracion_min ?? 0),
           }
         : { ...VACIO },
@@ -51,7 +51,7 @@ export default function Servicios() {
         datos: {
           codigo: datos.codigo || null,
           nombre: datos.nombre.trim(),
-          precio: aNumero(datos.precio),
+          precio: aCentavos(datos.precio),
           duracion_min: Math.round(aNumero(datos.duracion_min)),
           activo: true,
         },

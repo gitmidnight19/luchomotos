@@ -6,7 +6,7 @@ import { Button, Dialog, IconButton, Portal, Searchbar, Text } from 'react-nativ
 
 import { useCrearCompra, useProductos, useTerceros } from '../../src/api/hooks';
 import type { FormaPago, MetodoPago } from '../../src/api/tipos';
-import { aNumero, dinero } from '../../src/lib/formato';
+import { aCentavos, aNumero, dinero, enPesos, multiplicar, tasa } from '../../src/lib/formato';
 import {
   CampoNumero,
   CampoTexto,
@@ -48,9 +48,9 @@ export default function NuevaCompra() {
     let subtotal = 0;
     let iva = 0;
     for (const l of lineas) {
-      const base = l.cantidad * l.costo_unit;
+      const base = multiplicar(l.costo_unit, l.cantidad);
       subtotal += base;
-      iva += (base * l.iva_pct) / 100;
+      iva += tasa(base, l.iva_pct);
     }
     return { subtotal, iva, total: subtotal + iva };
   }, [lineas]);
@@ -196,7 +196,9 @@ export default function NuevaCompra() {
                   Precio de venta: {dinero(l.precio_venta)}
                 </Text>
               </View>
-              <Text style={{ fontWeight: '700' }}>{dinero(l.cantidad * l.costo_unit)}</Text>
+              <Text style={{ fontWeight: '700' }}>
+                {dinero(multiplicar(l.costo_unit, l.cantidad))}
+              </Text>
               <IconButton icon="pencil-outline" size={18} onPress={() => setEditando(l)} />
               <IconButton
                 icon="close"
@@ -248,8 +250,8 @@ export default function NuevaCompra() {
                 />
                 <CampoNumero
                   label="Costo unitario"
-                  value={String(editando.costo_unit)}
-                  onChangeText={(t) => setEditando({ ...editando, costo_unit: aNumero(t) })}
+                  value={String(enPesos(editando.costo_unit))}
+                  onChangeText={(t) => setEditando({ ...editando, costo_unit: aCentavos(t) })}
                 />
                 <CampoNumero
                   label="IVA %"
@@ -258,8 +260,8 @@ export default function NuevaCompra() {
                 />
                 <CampoNumero
                   label="Nuevo precio de venta"
-                  value={String(editando.precio_venta)}
-                  onChangeText={(t) => setEditando({ ...editando, precio_venta: aNumero(t) })}
+                  value={String(enPesos(editando.precio_venta))}
+                  onChangeText={(t) => setEditando({ ...editando, precio_venta: aCentavos(t) })}
                 />
               </>
             )}

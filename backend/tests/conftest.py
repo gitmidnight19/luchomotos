@@ -57,10 +57,10 @@ def producto(cliente: TestClient) -> dict:
         json={
             "nombre": "Bujia de prueba",
             "sku": "TEST-001",
-            "precio_venta": 20000,
+            "precio_venta": 2000000,
             "stock_min": 2,
             "stock_inicial": 10,
-            "costo_inicial": 10000,
+            "costo_inicial": 1000000,
         },
     )
     assert respuesta.status_code == 201, respuesta.text

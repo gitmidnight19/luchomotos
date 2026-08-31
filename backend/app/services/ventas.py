@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..database import hoy
+from ..dinero import Centavos, multiplicar, porcentaje
 from ..errores import NoEncontrado, ReglaNegocio
 from ..models import Producto, Servicio, Venta, VentaLinea
 from ..schemas import VentaIn
@@ -16,7 +17,6 @@ from .contabilidad import (
     cfg,
     cuenta_medio,
     iva_general,
-    r2,
     registrar_asiento,
 )
 
@@ -59,19 +59,24 @@ def crear(db: Session, datos: VentaIn) -> Venta:
     venta.numero = consecutivo(db, "prefijo_venta", venta.id)
 
     iva_def = iva_general(db)
-    sub_repuestos = sub_servicios = iva_total = costo_total = descuentos = 0.0
+    sub_repuestos: Centavos = 0
+    sub_servicios: Centavos = 0
+    iva_total: Centavos = 0
+    costo_total: Centavos = 0
+    descuentos: Centavos = 0
 
     for linea in datos.lineas:
         iva_pct = linea.iva_pct if linea.iva_pct is not None else iva_def
-        base = r2(linea.cantidad * linea.precio_unit - linea.descuento)
-        iva_total += r2(base * iva_pct / 100.0)
+        base = multiplicar(linea.precio_unit, linea.cantidad) - linea.descuento
+        iva_total += porcentaje(base, iva_pct)
         descuentos += linea.descuento
-        costo_unit = costo_linea = 0.0
+        costo_unit: Centavos = 0
+        costo_linea: Centavos = 0
         descripcion = linea.descripcion
 
         if linea.tipo == "producto" and linea.producto_id:
             producto = inventario.obtener_producto(db, linea.producto_id)
-            costo_unit = float(producto.costo_promedio or 0)
+            costo_unit = round(producto.costo_promedio)
             costo_linea = inventario.mover(
                 db,
                 producto.id,
@@ -109,12 +114,12 @@ def crear(db: Session, datos: VentaIn) -> Venta:
             )
         )
 
-    venta.subtotal = r2(sub_repuestos + sub_servicios)
-    venta.iva = r2(iva_total)
-    venta.descuento = r2(descuentos)
-    venta.total = r2(venta.subtotal + venta.iva)
-    venta.costo_total = r2(costo_total)
-    venta.saldo = venta.total if datos.forma_pago == "credito" else 0.0
+    venta.subtotal = sub_repuestos + sub_servicios
+    venta.iva = iva_total
+    venta.descuento = descuentos
+    venta.total = venta.subtotal + venta.iva
+    venta.costo_total = costo_total
+    venta.saldo = venta.total if datos.forma_pago == "credito" else 0
 
     movs: list[Movimiento] = []
     if datos.forma_pago == "credito":
@@ -124,9 +129,9 @@ def crear(db: Session, datos: VentaIn) -> Venta:
             (cuenta_medio(db, datos.metodo), venta.total, 0, f"Recaudo venta {venta.numero}")
         )
     if sub_repuestos:
-        movs.append((CTA_ING_REPUESTOS, 0, r2(sub_repuestos), f"Repuestos {venta.numero}"))
+        movs.append((CTA_ING_REPUESTOS, 0, sub_repuestos, f"Repuestos {venta.numero}"))
     if sub_servicios:
-        movs.append((CTA_ING_SERVICIOS, 0, r2(sub_servicios), f"Servicios {venta.numero}"))
+        movs.append((CTA_ING_SERVICIOS, 0, sub_servicios, f"Servicios {venta.numero}"))
     if venta.iva:
         movs.append((CTA_IVA_VENTA, 0, venta.iva, f"IVA generado {venta.numero}"))
     if venta.costo_total:
@@ -173,10 +178,12 @@ def anular(db: Session, venta_id: int, motivo: str = "Anulacion de factura") -> 
                 "VENTA-ANUL",
                 venta.id,
                 f"Devolucion por anulacion {venta.numero}",
+                # Exactamente lo que salio: el contra-asiento reversa ese entero.
+                valor=linea.costo_total,
             )
     anular_asientos(db, "VENTA", venta.id, fecha, f"{motivo} {venta.numero}")
     venta.estado = "anulada"
-    venta.saldo = 0.0
+    venta.saldo = 0
 
     from ..models import Orden
 
@@ -186,6 +193,6 @@ def anular(db: Session, venta_id: int, motivo: str = "Anulacion de factura") -> 
     db.flush()
 
 
-def precio_producto(db: Session, producto_id: int) -> float:
+def precio_producto(db: Session, producto_id: int) -> Centavos:
     producto = db.get(Producto, producto_id)
-    return float(producto.precio_venta) if producto else 0.0
+    return producto.precio_venta if producto else 0

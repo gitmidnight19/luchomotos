@@ -38,34 +38,34 @@ from .services import tesoreria as srv_tesoreria
 from .services import ventas as srv_ventas
 from .services.contabilidad import registrar_asiento
 
-# sku, nombre, categoria, costo, precio, minimo
+# sku, nombre, categoria, costo EN CENTAVOS, precio EN CENTAVOS, minimo
 PRODUCTOS = [
-    ("AC-001", "Aceite motor 20W50 mineral 1L", "Lubricantes", 18000, 28000, 10),
-    ("AC-002", "Aceite motor 10W40 sintetico 1L", "Lubricantes", 32000, 48000, 6),
-    ("AC-003", "Aceite de transmision 350ml", "Lubricantes", 12000, 20000, 6),
-    ("FL-001", "Filtro de aceite universal", "Filtros", 9000, 16000, 10),
-    ("FL-002", "Filtro de aire deportivo", "Filtros", 25000, 42000, 5),
-    ("FR-001", "Pastillas de freno delanteras", "Frenos", 22000, 38000, 8),
-    ("FR-002", "Bandas de freno traseras", "Frenos", 18000, 32000, 8),
-    ("FR-003", "Liquido de frenos DOT4 250ml", "Frenos", 11000, 19000, 6),
-    ("MO-001", "Bujia NGK estandar", "Motor", 8000, 15000, 15),
-    ("MO-002", "Empaque de culata", "Motor", 15000, 27000, 4),
-    ("MO-003", "Kit de anillos 125cc", "Motor", 45000, 78000, 3),
-    ("TR-001", "Kit de arrastre 428H", "Transmision", 95000, 155000, 4),
-    ("TR-002", "Cadena 428 x 118L", "Transmision", 42000, 70000, 5),
-    ("TR-003", "Guaya de embrague", "Transmision", 9000, 18000, 8),
-    ("TR-004", "Guaya de acelerador", "Transmision", 9500, 18000, 8),
-    ("EL-001", "Bateria 12V 5Ah sellada", "Electrico", 78000, 125000, 3),
-    ("EL-002", "Bombillo halogeno H4", "Electrico", 12000, 22000, 10),
-    ("EL-003", "CDI universal", "Electrico", 55000, 92000, 2),
-    ("EL-004", "Regulador de voltaje", "Electrico", 48000, 82000, 3),
-    ("LL-001", "Llanta 90/90-18 trasera", "Llantas", 115000, 185000, 4),
-    ("LL-002", "Llanta 2.75-18 delantera", "Llantas", 95000, 155000, 4),
-    ("LL-003", "Neumatico 18 pulgadas", "Llantas", 18000, 32000, 8),
-    ("CA-001", "Espejo retrovisor par", "Carroceria", 22000, 40000, 5),
-    ("CA-002", "Manubrio deportivo", "Carroceria", 38000, 65000, 3),
-    ("AX-001", "Casco certificado", "Accesorios", 95000, 160000, 4),
-    ("AX-002", "Guantes de moto", "Accesorios", 35000, 62000, 5),
+    ("AC-001", "Aceite motor 20W50 mineral 1L", "Lubricantes", 1800000, 2800000, 10),
+    ("AC-002", "Aceite motor 10W40 sintetico 1L", "Lubricantes", 3200000, 4800000, 6),
+    ("AC-003", "Aceite de transmision 350ml", "Lubricantes", 1200000, 2000000, 6),
+    ("FL-001", "Filtro de aceite universal", "Filtros", 900000, 1600000, 10),
+    ("FL-002", "Filtro de aire deportivo", "Filtros", 2500000, 4200000, 5),
+    ("FR-001", "Pastillas de freno delanteras", "Frenos", 2200000, 3800000, 8),
+    ("FR-002", "Bandas de freno traseras", "Frenos", 1800000, 3200000, 8),
+    ("FR-003", "Liquido de frenos DOT4 250ml", "Frenos", 1100000, 1900000, 6),
+    ("MO-001", "Bujia NGK estandar", "Motor", 800000, 1500000, 15),
+    ("MO-002", "Empaque de culata", "Motor", 1500000, 2700000, 4),
+    ("MO-003", "Kit de anillos 125cc", "Motor", 4500000, 7800000, 3),
+    ("TR-001", "Kit de arrastre 428H", "Transmision", 9500000, 15500000, 4),
+    ("TR-002", "Cadena 428 x 118L", "Transmision", 4200000, 7000000, 5),
+    ("TR-003", "Guaya de embrague", "Transmision", 900000, 1800000, 8),
+    ("TR-004", "Guaya de acelerador", "Transmision", 950000, 1800000, 8),
+    ("EL-001", "Bateria 12V 5Ah sellada", "Electrico", 7800000, 12500000, 3),
+    ("EL-002", "Bombillo halogeno H4", "Electrico", 1200000, 2200000, 10),
+    ("EL-003", "CDI universal", "Electrico", 5500000, 9200000, 2),
+    ("EL-004", "Regulador de voltaje", "Electrico", 4800000, 8200000, 3),
+    ("LL-001", "Llanta 90/90-18 trasera", "Llantas", 11500000, 18500000, 4),
+    ("LL-002", "Llanta 2.75-18 delantera", "Llantas", 9500000, 15500000, 4),
+    ("LL-003", "Neumatico 18 pulgadas", "Llantas", 1800000, 3200000, 8),
+    ("CA-001", "Espejo retrovisor par", "Carroceria", 2200000, 4000000, 5),
+    ("CA-002", "Manubrio deportivo", "Carroceria", 3800000, 6500000, 3),
+    ("AX-001", "Casco certificado", "Accesorios", 9500000, 16000000, 4),
+    ("AX-002", "Guantes de moto", "Accesorios", 3500000, 6200000, 5),
 ]
 
 CLIENTES = [
@@ -97,9 +97,9 @@ MOTOS = [
 ]
 
 GASTOS_FIJOS = [
-    ("5120", "Arriendo del local", 1200000),
-    ("5135", "Energia, agua e internet", 320000),
-    ("5105", "Salario mecanico auxiliar", 1400000),
+    ("5120", "Arriendo del local", 120000000),
+    ("5135", "Energia, agua e internet", 32000000),
+    ("5105", "Salario mecanico auxiliar", 140000000),
 ]
 
 IVA = 19.0
@@ -124,10 +124,10 @@ def cargar(db: Session) -> None:
         None,
         "Aporte inicial del propietario",
         [
-            ("1105", 2000000, 0, "Efectivo en caja"),
-            ("1110", 12000000, 0, "Cuenta bancaria"),
-            ("1524", 4500000, 0, "Herramienta y equipo"),
-            ("3105", 0, 18500000, "Capital social"),
+            ("1105", 200_000_000, 0, "Efectivo en caja"),
+            ("1110", 1_200_000_000, 0, "Cuenta bancaria"),
+            ("1524", 450_000_000, 0, "Herramienta y equipo"),
+            ("3105", 0, 1_850_000_000, "Capital social"),
         ],
     )
 
@@ -289,20 +289,19 @@ def cargar(db: Session) -> None:
                     .join(Asiento, Asiento.id == AsientoLinea.asiento_id)
                     .where(
                         AsientoLinea.cuenta_id == cuentas["1105"],
-                        Asiento.anulado == 0,
                         Asiento.fecha <= fecha,
                     )
                 )
                 or 0
             )
-            if caja > 1500000:
+            if caja > 150_000_000:
                 srv_tesoreria.traslado(
                     db,
                     TrasladoIn(
                         fecha=fecha,
                         origen="efectivo",
                         destino="banco",
-                        monto=round(caja - 800000, -3),
+                        monto=round(caja - 80_000_000, -3),
                         nota="Consignacion del recaudo semanal",
                     ),
                 )
@@ -326,7 +325,7 @@ def cargar(db: Session) -> None:
                     fecha=fecha,
                     cuenta_id=cuentas["5150"],
                     descripcion="Insumos de taller y aseo",
-                    monto=rnd.randint(40000, 120000),
+                    monto=rnd.randint(4_000_000, 12_000_000),
                     metodo="efectivo",
                 ),
             )
@@ -390,7 +389,7 @@ def cargar(db: Session) -> None:
                     producto_id=ids["FR-001"],
                     descripcion="Pastillas de freno delanteras",
                     cantidad=1,
-                    precio_unit=38000,
+                    precio_unit=3_800_000,
                     iva_pct=IVA,
                 ),
             ],

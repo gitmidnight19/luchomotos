@@ -1,4 +1,15 @@
-"""Inventario: kardex y costo promedio ponderado."""
+"""Inventario: kardex y costeo por promedio ponderado.
+
+El costo promedio **no se almacena**: se almacena el valor total de las
+existencias (`Producto.valor_inventario`, en centavos) y el promedio se deriva
+al leer. Esto no es un detalle de implementacion, es lo que hace que la cuenta
+de control 1435 no pueda desviarse del auxiliar: el asiento contabiliza
+exactamente el mismo entero en que decrece el valor del producto.
+
+Guardar el promedio redondeado y multiplicarlo por el stock produce un numero
+que nunca coincide con la suma de asientos ya registrados; esa era la causa de
+que el mayor marcara 20.001,00 contra un kardex de 20.000,50.
+"""
 
 from __future__ import annotations
 
@@ -8,9 +19,10 @@ from typing import Literal
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..dinero import Centavos, multiplicar
 from ..errores import NoEncontrado, ReglaNegocio
 from ..models import Kardex, Producto
-from .contabilidad import Movimiento, r2, registrar_asiento
+from .contabilidad import Movimiento, registrar_asiento
 
 TipoMovimiento = Literal["ENTRADA", "SALIDA", "AJUSTE"]
 
@@ -27,62 +39,74 @@ def obtener_producto(db: Session, producto_id: int) -> Producto:
     return producto
 
 
+def _costo_de_salida(producto: Producto, unidades: float) -> Centavos:
+    """Valor que sale del inventario al despachar `unidades`.
+
+    Si se lleva toda la existencia sale exactamente todo el valor: asi el
+    producto queda en cero limpio, sin residuos de redondeo que despues nadie
+    podria justificar.
+    """
+    if producto.stock <= 0:
+        return 0
+    if unidades >= producto.stock:
+        return producto.valor_inventario
+    return round(producto.valor_inventario * unidades / producto.stock)
+
+
 def mover(
     db: Session,
     producto_id: int,
     fecha: date,
     tipo: TipoMovimiento,
     cantidad: float,
-    costo_unit: float = 0.0,
+    costo_unit: Centavos = 0,
     doc_tipo: str | None = None,
     doc_id: int | None = None,
     nota: str | None = None,
-) -> float:
-    """Registra un movimiento de inventario y devuelve su costo.
+    valor: Centavos | None = None,
+) -> Centavos:
+    """Registra un movimiento y devuelve su costo en centavos.
 
-    - ENTRADA: recalcula el costo promedio ponderado con el costo de la compra.
-    - SALIDA: valoriza al costo promedio vigente (el parametro `costo_unit` se ignora).
+    - ENTRADA: suma `cantidad x costo_unit` al valor del inventario.
+    - SALIDA: valoriza en proporcion al valor vigente (`costo_unit` se ignora).
     - AJUSTE: `cantidad` lleva signo; positiva entra, negativa sale.
+
+    `valor` fuerza el importe exacto del movimiento. Lo usan las anulaciones:
+    deben devolver al inventario justo el entero que salio, porque el
+    contra-asiento reversa ese mismo entero. Recalcularlo desde el costo
+    unitario da un numero distinto por redondeo y desliga el mayor del auxiliar.
     """
     producto = obtener_producto(db, producto_id)
-    stock = r2(producto.stock)
-    promedio = float(producto.costo_promedio or 0)
-    valor = stock * promedio
 
     if tipo == "ENTRADA":
         unidades = abs(float(cantidad))
-        costo_total = r2(unidades * float(costo_unit))
-        stock_nuevo = stock + unidades
-        valor_nuevo = valor + costo_total
-        promedio_nuevo = (valor_nuevo / stock_nuevo) if stock_nuevo > 0 else float(costo_unit)
+        costo = valor if valor is not None else multiplicar(costo_unit, unidades)
+        producto.stock += unidades
+        producto.valor_inventario += costo
         signo = unidades
     elif tipo == "SALIDA":
         unidades = abs(float(cantidad))
-        costo_unit = promedio
-        costo_total = r2(unidades * promedio)
-        stock_nuevo = stock - unidades
-        restante = valor - costo_total
-        valor_nuevo = max(restante, 0.0) if stock_nuevo <= 0 else restante
-        promedio_nuevo = promedio
+        costo = valor if valor is not None else _costo_de_salida(producto, unidades)
+        producto.stock -= unidades
+        producto.valor_inventario -= costo
         signo = -unidades
     else:
         delta = float(cantidad)
         if delta >= 0:
-            costo_unit = float(costo_unit or promedio)
-            costo_total = r2(delta * costo_unit)
-            stock_nuevo = stock + delta
-            valor_nuevo = valor + costo_total
-            promedio_nuevo = (valor_nuevo / stock_nuevo) if stock_nuevo > 0 else costo_unit
+            costo = multiplicar(costo_unit, delta)
+            producto.stock += delta
+            producto.valor_inventario += costo
         else:
-            costo_unit = promedio
-            costo_total = r2(abs(delta) * promedio)
-            stock_nuevo = stock + delta
-            valor_nuevo = max(valor - costo_total, 0.0)
-            promedio_nuevo = promedio
+            costo = _costo_de_salida(producto, abs(delta))
+            producto.stock += delta
+            producto.valor_inventario -= costo
         signo = delta
 
-    producto.stock = r2(stock_nuevo)
-    producto.costo_promedio = round(promedio_nuevo, 4)
+    # El stock es una cantidad (admite fracciones); el valor es entero exacto.
+    producto.stock = round(producto.stock, 4)
+    if producto.stock <= 0:
+        # Sin existencias no puede quedar valor: seria inventario fantasma.
+        producto.valor_inventario = 0
 
     db.add(
         Kardex(
@@ -92,16 +116,16 @@ def mover(
             doc_tipo=doc_tipo,
             doc_id=doc_id,
             cantidad=signo,
-            costo_unit=round(float(costo_unit or 0), 4),
-            costo_total=costo_total,
+            costo_unit=round(costo / abs(signo)) if signo else 0,
+            costo_total=costo,
             saldo_cant=producto.stock,
-            saldo_costo=r2(valor_nuevo),
-            saldo_unit=producto.costo_promedio,
+            saldo_costo=producto.valor_inventario,
+            saldo_unit=round(producto.costo_promedio),
             nota=nota,
         )
     )
     db.flush()
-    return costo_total
+    return costo
 
 
 def validar_existencias(db: Session, requerido: dict[int, float]) -> None:
@@ -111,7 +135,7 @@ def validar_existencias(db: Session, requerido: dict[int, float]) -> None:
         if float(producto.stock) < cantidad - 0.0001:
             raise ReglaNegocio(
                 f"Stock insuficiente de '{producto.nombre}': "
-                f"disponible {r2(producto.stock)}, requerido {r2(cantidad)}"
+                f"disponible {producto.stock}, requerido {cantidad}"
             )
 
 
@@ -121,7 +145,7 @@ def ajustar(
     cantidad: float,
     modo: Literal["conteo", "delta"] = "conteo",
     fecha: date | None = None,
-    costo_unit: float | None = None,
+    costo_unit: Centavos | None = None,
     nota: str | None = None,
 ) -> float:
     """Ajuste por conteo fisico o entrada/salida manual. Devuelve el delta aplicado."""
@@ -129,27 +153,19 @@ def ajustar(
 
     producto = obtener_producto(db, producto_id)
     fecha = fecha or hoy()
-    delta = r2(cantidad - float(producto.stock)) if modo == "conteo" else float(cantidad)
+    delta = round(cantidad - producto.stock, 4) if modo == "conteo" else float(cantidad)
     if abs(delta) < 0.0001:
         return 0.0
 
     detalle = nota or "Ajuste de inventario"
-    valor = mover(
-        db,
-        producto_id,
-        fecha,
-        "AJUSTE",
-        delta,
-        float(costo_unit or producto.costo_promedio or 0),
-        "AJUSTE",
-        producto_id,
-        detalle,
-    )
+    # Un sobrante sin costo indicado entra al costo promedio vigente.
+    unitario = costo_unit if costo_unit is not None else round(producto.costo_promedio)
+    valor = mover(db, producto_id, fecha, "AJUSTE", delta, unitario, "AJUSTE", producto_id, detalle)
     movs: list[Movimiento]
     if delta > 0:
-        movs = [(CTA_INVENTARIO, valor, 0.0, detalle), (CTA_OTROS_ING, 0.0, valor, detalle)]
+        movs = [(CTA_INVENTARIO, valor, 0, detalle), (CTA_OTROS_ING, 0, valor, detalle)]
     else:
-        movs = [(CTA_PERDIDA_INV, valor, 0.0, detalle), (CTA_INVENTARIO, 0.0, valor, detalle)]
+        movs = [(CTA_PERDIDA_INV, valor, 0, detalle), (CTA_INVENTARIO, 0, valor, detalle)]
     registrar_asiento(
         db, fecha, "AJUSTE", producto_id, f"Ajuste inventario: {producto.nombre}", movs
     )
@@ -157,7 +173,11 @@ def ajustar(
 
 
 def saldo_inicial(
-    db: Session, producto_id: int, cantidad: float, costo_unit: float, fecha: date | None = None
+    db: Session,
+    producto_id: int,
+    cantidad: float,
+    costo_unit: Centavos,
+    fecha: date | None = None,
 ) -> None:
     """Carga inicial de existencias, contabilizada como aporte de capital."""
     from ..database import hoy
@@ -184,8 +204,8 @@ def saldo_inicial(
             producto_id,
             "Inventario inicial",
             [
-                (CTA_INVENTARIO, valor, 0.0, "Saldo inicial de inventario"),
-                (CTA_CAPITAL, 0.0, valor, "Aporte en inventario"),
+                (CTA_INVENTARIO, valor, 0, "Saldo inicial de inventario"),
+                (CTA_CAPITAL, 0, valor, "Aporte en inventario"),
             ],
         )
 

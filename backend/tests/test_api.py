@@ -44,12 +44,12 @@ def test_iva_por_defecto_sale_de_la_configuracion(cliente: TestClient, producto)
                     "tipo": "producto",
                     "producto_id": producto["id"],
                     "cantidad": 1,
-                    "precio_unit": 100000,
+                    "precio_unit": 10000000,
                 }
             ]
         },
     ).json()
-    assert cliente.get(f"/api/ventas/{venta['id']}").json()["iva"] == 5000
+    assert cliente.get(f"/api/ventas/{venta['id']}").json()["iva"] == 500000
 
 
 def test_crud_de_terceros(cliente: TestClient):
@@ -114,14 +114,14 @@ def test_orden_de_trabajo_se_factura(cliente: TestClient, producto, cliente_tall
                     "servicio_id": servicio["id"],
                     "descripcion": servicio["nombre"],
                     "cantidad": 1,
-                    "precio_unit": 30000,
+                    "precio_unit": 3000000,
                     "iva_pct": 0,
                 },
                 {
                     "tipo": "producto",
                     "producto_id": producto["id"],
                     "cantidad": 2,
-                    "precio_unit": 20000,
+                    "precio_unit": 2000000,
                     "iva_pct": 0,
                 },
             ],
@@ -130,15 +130,15 @@ def test_orden_de_trabajo_se_factura(cliente: TestClient, producto, cliente_tall
     assert orden["numero"].startswith("OT-")
 
     detalle = cliente.get(f"/api/ordenes/{orden['id']}").json()
-    assert detalle["total"] == 70000
+    assert detalle["total"] == 7000000
     assert detalle["items"][1]["stock"] == 10
 
     factura = cliente.post(
         f"/api/ordenes/{orden['id']}/facturar", json={"forma_pago": "contado"}
     ).json()
     venta = cliente.get(f"/api/ventas/{factura['id']}").json()
-    assert venta["total"] == 70000
-    assert venta["costo_total"] == 20000
+    assert venta["total"] == 7000000
+    assert venta["costo_total"] == 2000000
     assert cliente.get(f"/api/ordenes/{orden['id']}").json()["estado"] == "facturada"
     assert cliente.get("/api/productos").json()[0]["stock"] == 8
 
@@ -154,7 +154,7 @@ def test_orden_facturada_no_se_modifica(cliente: TestClient, cliente_taller):
                     "tipo": "servicio",
                     "servicio_id": servicio["id"],
                     "cantidad": 1,
-                    "precio_unit": 10000,
+                    "precio_unit": 1000000,
                 }
             ],
         },
@@ -176,7 +176,7 @@ def test_anular_factura_reabre_la_orden(cliente: TestClient, cliente_taller):
                     "tipo": "servicio",
                     "servicio_id": servicio["id"],
                     "cantidad": 1,
-                    "precio_unit": 10000,
+                    "precio_unit": 1000000,
                 }
             ],
         },
@@ -211,20 +211,20 @@ def test_dashboard_refleja_las_ventas(cliente: TestClient, producto):
                     "tipo": "producto",
                     "producto_id": producto["id"],
                     "cantidad": 2,
-                    "precio_unit": 20000,
+                    "precio_unit": 2000000,
                     "iva_pct": 0,
                 }
             ]
         },
     )
     panel = cliente.get("/api/informes/dashboard").json()
-    assert panel["ventas_hoy"] == 40000
+    assert panel["ventas_hoy"] == 4000000
     assert panel["num_ventas_mes"] == 1
-    assert panel["ticket_promedio"] == 40000
-    assert panel["utilidad_bruta_mes"] == 20000
-    assert panel["inventario_valor"] == 80000
+    assert panel["ticket_promedio"] == 4000000
+    assert panel["utilidad_bruta_mes"] == 2000000
+    assert panel["inventario_valor"] == 8000000
     assert len(panel["serie"]) == 30
-    assert panel["top_productos"][0]["monto"] == 40000
+    assert panel["top_productos"][0]["monto"] == 4000000
 
 
 def test_alerta_de_stock_minimo(cliente: TestClient, producto):
@@ -236,7 +236,7 @@ def test_alerta_de_stock_minimo(cliente: TestClient, producto):
                     "tipo": "producto",
                     "producto_id": producto["id"],
                     "cantidad": 9,
-                    "precio_unit": 20000,
+                    "precio_unit": 2000000,
                 }
             ]
         },
@@ -257,20 +257,20 @@ def test_estado_de_resultados(cliente: TestClient, producto):
                     "tipo": "producto",
                     "producto_id": producto["id"],
                     "cantidad": 5,
-                    "precio_unit": 20000,
+                    "precio_unit": 2000000,
                     "iva_pct": 0,
                 }
             ]
         },
     )
-    cliente.post("/api/gastos", json={"cuenta_id": cuentas["5120"], "monto": 30000})
+    cliente.post("/api/gastos", json={"cuenta_id": cuentas["5120"], "monto": 3000000})
 
     er = cliente.get("/api/informes/estado-resultados?desde=2000-01-01").json()
-    assert er["total_ingresos"] == 100000
-    assert er["total_costos"] == 50000
-    assert er["utilidad_bruta"] == 50000
-    assert er["total_gastos"] == 30000
-    assert er["utilidad_neta"] == 20000
+    assert er["total_ingresos"] == 10000000
+    assert er["total_costos"] == 5000000
+    assert er["utilidad_bruta"] == 5000000
+    assert er["total_gastos"] == 3000000
+    assert er["utilidad_neta"] == 2000000
     assert er["margen_neto"] == 20.0
 
 
@@ -283,25 +283,25 @@ def test_flujo_de_caja_e_impuestos(cliente: TestClient, producto):
                     "tipo": "producto",
                     "producto_id": producto["id"],
                     "cantidad": 1,
-                    "precio_unit": 100000,
+                    "precio_unit": 10000000,
                     "iva_pct": 19,
                 }
             ]
         },
     )
     flujo = cliente.get("/api/informes/flujo?desde=2000-01-01").json()
-    assert flujo["total_entradas"] == 119000
-    assert flujo["saldo_final"] == 119000
+    assert flujo["total_entradas"] == 11900000
+    assert flujo["saldo_final"] == 11900000
 
     impuestos = cliente.get("/api/informes/impuestos?desde=2000-01-01").json()
-    assert impuestos["iva_generado"] == 19000
-    assert impuestos["saldo_a_pagar"] == 19000
+    assert impuestos["iva_generado"] == 1900000
+    assert impuestos["saldo_a_pagar"] == 1900000
 
 
 def test_inventario_valorizado(cliente: TestClient, producto):
     inventario = cliente.get("/api/informes/inventario").json()
-    assert inventario["total_costo"] == 100000
-    assert inventario["total_venta"] == 200000
+    assert inventario["total_costo"] == 10000000
+    assert inventario["total_venta"] == 20000000
     assert inventario["items"][0]["margen"] == 50.0
 
 
@@ -314,7 +314,7 @@ def test_ventas_por_periodo(cliente: TestClient, producto):
                     "tipo": "producto",
                     "producto_id": producto["id"],
                     "cantidad": 1,
-                    "precio_unit": 20000,
+                    "precio_unit": 2000000,
                     "iva_pct": 0,
                 }
             ]
@@ -322,7 +322,7 @@ def test_ventas_por_periodo(cliente: TestClient, producto):
     )
     filas = cliente.get("/api/informes/ventas?desde=2000-01-01&agrupar=mes").json()
     assert filas[-1]["num"] == 1
-    assert filas[-1]["utilidad"] == 10000
+    assert filas[-1]["utilidad"] == 1000000
     assert filas[-1]["margen"] == 50.0
 
 
@@ -335,7 +335,7 @@ def test_libro_mayor(cliente: TestClient, producto):
                     "tipo": "producto",
                     "producto_id": producto["id"],
                     "cantidad": 1,
-                    "precio_unit": 20000,
+                    "precio_unit": 2000000,
                     "iva_pct": 0,
                 }
             ]
@@ -344,7 +344,7 @@ def test_libro_mayor(cliente: TestClient, producto):
     caja = next(c for c in cliente.get("/api/cuentas").json() if c["codigo"] == "1105")
     mayor = cliente.get(f"/api/informes/libro-mayor/{caja['id']}?desde=2000-01-01").json()
     assert mayor["saldo_inicial"] == 0
-    assert mayor["saldo_final"] == 20000
+    assert mayor["saldo_final"] == 2000000
     assert len(mayor["movimientos"]) == 1
 
 
@@ -374,7 +374,7 @@ def test_limpiar_deja_el_plan_de_cuentas(cliente: TestClient, producto):
                     "tipo": "producto",
                     "producto_id": producto["id"],
                     "cantidad": 1,
-                    "precio_unit": 20000,
+                    "precio_unit": 2000000,
                 }
             ]
         },

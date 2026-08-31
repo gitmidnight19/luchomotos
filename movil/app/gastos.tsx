@@ -11,7 +11,7 @@ import {
   useTerceros,
 } from '../src/api/hooks';
 import type { MetodoGasto } from '../src/api/tipos';
-import { aNumero, dinero, dineroCorto, fechaCorta, porcentaje } from '../src/lib/formato';
+import { aCentavos, dinero, dineroCorto, fechaCorta, porcentaje } from '../src/lib/formato';
 import {
   AvisoError,
   CampoNumero,
@@ -68,14 +68,14 @@ export default function Gastos() {
       Alert.alert('Falta el concepto', 'Elija a que cuenta va el gasto.');
       return;
     }
-    if (aNumero(monto) <= 0) {
+    if (aCentavos(monto) <= 0) {
       Alert.alert('Monto invalido');
       return;
     }
     try {
       await crear.mutateAsync({
         cuenta_id: cuentaId,
-        monto: aNumero(monto),
+        monto: aCentavos(monto),
         descripcion: descripcion || null,
         metodo,
         proveedor_id: metodo === 'credito' ? proveedorId : null,

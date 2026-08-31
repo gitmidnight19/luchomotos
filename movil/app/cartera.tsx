@@ -6,7 +6,15 @@ import { Button, Dialog, Portal, Text } from 'react-native-paper';
 
 import { useCartera, usePagos, useRegistrarPago, useTraslado } from '../src/api/hooks';
 import type { MetodoPago } from '../src/api/tipos';
-import { aNumero, dinero, dineroCorto, fechaCorta, hoy, primerDiaMes } from '../src/lib/formato';
+import {
+  aCentavos,
+  dinero,
+  dineroCorto,
+  enPesos,
+  fechaCorta,
+  hoy,
+  primerDiaMes,
+} from '../src/lib/formato';
 import {
   CampoNumero,
   CampoTexto,
@@ -50,7 +58,7 @@ export default function Cartera() {
       await registrar.mutateAsync({
         clase: actual.clase,
         doc_id: actual.id,
-        monto: aNumero(monto),
+        monto: aCentavos(monto),
         metodo,
       });
       Alert.alert(actual.clase === 'cobro' ? 'Abono registrado' : 'Pago registrado');
@@ -63,7 +71,7 @@ export default function Cartera() {
     setDialogoTraslado(false);
     try {
       await traslado.mutateAsync({
-        monto: aNumero(montoTraslado),
+        monto: aCentavos(montoTraslado),
         origen,
         destino: origen === 'efectivo' ? 'banco' : 'efectivo',
         nota,
@@ -112,7 +120,7 @@ export default function Cartera() {
               subtitulo={`${f.numero ?? ''} · ${fechaCorta(f.fecha)}`}
               detalle={f.telefono ?? undefined}
               onPress={() => {
-                setMonto(String(f.saldo));
+                setMonto(String(enPesos(f.saldo)));
                 setMetodo('efectivo');
                 setCobro({ id: f.id, saldo: f.saldo, clase: 'cobro' });
               }}
@@ -140,7 +148,7 @@ export default function Cartera() {
               titulo={f.tercero ?? 'Proveedor'}
               subtitulo={`${f.numero ?? ''} · ${fechaCorta(f.fecha)}`}
               onPress={() => {
-                setMonto(String(f.saldo));
+                setMonto(String(enPesos(f.saldo)));
                 setMetodo('banco');
                 setCobro({ id: f.id, saldo: f.saldo, clase: 'pago' });
               }}

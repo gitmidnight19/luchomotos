@@ -6,7 +6,7 @@ import { Button, Dialog, Portal, Text } from 'react-native-paper';
 
 import { useAnularVenta, useConfig, useRegistrarPago, useVenta } from '../../src/api/hooks';
 import type { MetodoPago } from '../../src/api/tipos';
-import { aNumero, cantidad, dinero, fechaLarga } from '../../src/lib/formato';
+import { aCentavos, cantidad, dinero, enPesos, fechaLarga } from '../../src/lib/formato';
 import {
   CampoNumero,
   Cargando,
@@ -38,7 +38,7 @@ export default function Factura() {
   }, [navigation, venta]);
 
   useEffect(() => {
-    if (venta) setMonto(String(venta.saldo));
+    if (venta) setMonto(String(enPesos(venta.saldo)));
   }, [venta]);
 
   if (isLoading || !venta) return <Cargando />;
@@ -68,7 +68,7 @@ export default function Factura() {
       await cobrar.mutateAsync({
         clase: 'cobro',
         doc_id: ventaId,
-        monto: aNumero(monto),
+        monto: aCentavos(monto),
         metodo,
       });
       Alert.alert('Abono registrado');

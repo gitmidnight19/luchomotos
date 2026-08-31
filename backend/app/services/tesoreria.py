@@ -8,7 +8,7 @@ from ..database import hoy
 from ..errores import NoEncontrado, ReglaNegocio
 from ..models import Asiento, Compra, Cuenta, Gasto, Pago, Venta
 from ..schemas import AsientoManualIn, GastoIn, PagoIn, TrasladoIn
-from .contabilidad import Movimiento, anular_asientos, cuenta_medio, r2, registrar_asiento
+from .contabilidad import Movimiento, anular_asientos, cuenta_medio, registrar_asiento
 
 CTA_CLIENTES = "1305"
 CTA_PROVEEDORES = "2205"
@@ -26,7 +26,7 @@ def crear_gasto(db: Session, datos: GastoIn) -> Gasto:
         fecha=fecha,
         cuenta_id=cuenta.id,
         descripcion=datos.descripcion,
-        monto=r2(datos.monto),
+        monto=datos.monto,
         metodo=datos.metodo,
         proveedor_id=datos.proveedor_id,
         estado="activo",
@@ -65,7 +65,7 @@ def anular_gasto(db: Session, gasto_id: int) -> None:
 def registrar_pago(db: Session, datos: PagoIn) -> Pago:
     """Abono de un cliente (`cobro`) o pago a un proveedor (`pago`)."""
     fecha = datos.fecha or hoy()
-    monto = r2(datos.monto)
+    monto = datos.monto
     tercero_id = datos.tercero_id
     doc_tipo = None
     referencia = ""
@@ -75,9 +75,9 @@ def registrar_pago(db: Session, datos: PagoIn) -> Pago:
             venta = db.get(Venta, datos.doc_id)
             if venta is None or venta.estado == "anulada":
                 raise ReglaNegocio("Factura no valida")
-            if monto > r2(venta.saldo) + 0.01:
-                raise ReglaNegocio(f"El abono supera el saldo pendiente ({venta.saldo:.2f})")
-            venta.saldo = r2(venta.saldo - monto)
+            if monto > venta.saldo:
+                raise ReglaNegocio(f"El abono supera el saldo pendiente ({venta.saldo})")
+            venta.saldo -= monto
             tercero_id = tercero_id or venta.cliente_id
             doc_tipo = "VENTA"
             referencia = venta.numero or ""
@@ -90,9 +90,9 @@ def registrar_pago(db: Session, datos: PagoIn) -> Pago:
             compra = db.get(Compra, datos.doc_id)
             if compra is None or compra.estado == "anulada":
                 raise ReglaNegocio("Compra no valida")
-            if monto > r2(compra.saldo) + 0.01:
-                raise ReglaNegocio(f"El pago supera el saldo pendiente ({compra.saldo:.2f})")
-            compra.saldo = r2(compra.saldo - monto)
+            if monto > compra.saldo:
+                raise ReglaNegocio(f"El pago supera el saldo pendiente ({compra.saldo})")
+            compra.saldo -= monto
             tercero_id = tercero_id or compra.proveedor_id
             doc_tipo = "COMPRA"
             referencia = compra.numero or ""
@@ -133,7 +133,7 @@ def traslado(db: Session, datos: TrasladoIn) -> Asiento:
     if datos.origen == datos.destino:
         raise ReglaNegocio("El origen y el destino deben ser distintos")
     fecha = datos.fecha or hoy()
-    monto = r2(datos.monto)
+    monto = datos.monto
     nota = datos.nota or "Traslado de fondos"
     asiento = registrar_asiento(
         db,

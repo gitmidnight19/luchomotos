@@ -12,6 +12,7 @@ from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
+from .dinero import Centavos
 
 
 class Config(Base):
@@ -55,8 +56,8 @@ class AsientoLinea(Base):
         ForeignKey("asientos.id", ondelete="CASCADE"), index=True
     )
     cuenta_id: Mapped[int] = mapped_column(ForeignKey("cuentas.id"), index=True)
-    debe: Mapped[float] = mapped_column(Float, default=0)
-    haber: Mapped[float] = mapped_column(Float, default=0)
+    debe: Mapped[Centavos] = mapped_column(Integer, default=0)
+    haber: Mapped[Centavos] = mapped_column(Integer, default=0)
     detalle: Mapped[str | None] = mapped_column(String)
 
     asiento: Mapped[Asiento] = relationship(back_populates="lineas")
@@ -108,8 +109,12 @@ class Producto(Base):
     categoria_id: Mapped[int | None] = mapped_column(ForeignKey("categorias.id"))
     unidad: Mapped[str | None] = mapped_column(String, default="UND")
     stock: Mapped[float] = mapped_column(Float, default=0)
-    costo_promedio: Mapped[float] = mapped_column(Float, default=0)
-    precio_venta: Mapped[float] = mapped_column(Float, default=0)
+    #: Valor total de las existencias, en centavos. Se almacena el VALOR y no el
+    #: costo promedio: asi la cuenta de control 1435 no puede desviarse del
+    #: auxiliar, porque el asiento contabiliza exactamente lo que se descuenta de
+    #: aqui. El costo promedio se deriva al leer (ver la propiedad de abajo).
+    valor_inventario: Mapped[Centavos] = mapped_column(Integer, default=0)
+    precio_venta: Mapped[Centavos] = mapped_column(Integer, default=0)
     stock_min: Mapped[float] = mapped_column(Float, default=0)
     ubicacion: Mapped[str | None] = mapped_column(String)
     iva_pct: Mapped[float | None] = mapped_column(Float)
@@ -118,13 +123,18 @@ class Producto(Base):
 
     categoria: Mapped[Categoria | None] = relationship(lazy="joined")
 
+    @property
+    def costo_promedio(self) -> float:
+        """Costo unitario medio en centavos. Derivado, nunca almacenado."""
+        return self.valor_inventario / self.stock if self.stock else 0.0
+
 
 class Servicio(Base):
     __tablename__ = "servicios"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     codigo: Mapped[str | None] = mapped_column(String, unique=True)
     nombre: Mapped[str] = mapped_column(String)
-    precio: Mapped[float] = mapped_column(Float, default=0)
+    precio: Mapped[Centavos] = mapped_column(Integer, default=0)
     duracion_min: Mapped[int | None] = mapped_column(Integer, default=0)
     activo: Mapped[int] = mapped_column(Integer, default=1)
 
@@ -139,11 +149,11 @@ class Kardex(Base):
     doc_tipo: Mapped[str | None] = mapped_column(String)
     doc_id: Mapped[int | None] = mapped_column(Integer)
     cantidad: Mapped[float] = mapped_column(Float)
-    costo_unit: Mapped[float] = mapped_column(Float, default=0)
-    costo_total: Mapped[float] = mapped_column(Float, default=0)
+    costo_unit: Mapped[Centavos] = mapped_column(Integer, default=0)
+    costo_total: Mapped[Centavos] = mapped_column(Integer, default=0)
     saldo_cant: Mapped[float] = mapped_column(Float, default=0)
-    saldo_costo: Mapped[float] = mapped_column(Float, default=0)
-    saldo_unit: Mapped[float] = mapped_column(Float, default=0)
+    saldo_costo: Mapped[Centavos] = mapped_column(Integer, default=0)
+    saldo_unit: Mapped[Centavos] = mapped_column(Integer, default=0)
     nota: Mapped[str | None] = mapped_column(String)
 
 
@@ -153,12 +163,12 @@ class Compra(Base):
     numero: Mapped[str | None] = mapped_column(String)
     fecha: Mapped[date] = mapped_column(Date, index=True)
     proveedor_id: Mapped[int | None] = mapped_column(ForeignKey("terceros.id"), index=True)
-    subtotal: Mapped[float] = mapped_column(Float, default=0)
-    iva: Mapped[float] = mapped_column(Float, default=0)
-    total: Mapped[float] = mapped_column(Float, default=0)
+    subtotal: Mapped[Centavos] = mapped_column(Integer, default=0)
+    iva: Mapped[Centavos] = mapped_column(Integer, default=0)
+    total: Mapped[Centavos] = mapped_column(Integer, default=0)
     forma_pago: Mapped[str] = mapped_column(String, default="contado")
     metodo: Mapped[str | None] = mapped_column(String, default="efectivo")
-    saldo: Mapped[float] = mapped_column(Float, default=0)
+    saldo: Mapped[Centavos] = mapped_column(Integer, default=0)
     estado: Mapped[str] = mapped_column(String, default="activa")
     nota: Mapped[str | None] = mapped_column(String)
     creado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
@@ -175,9 +185,9 @@ class CompraLinea(Base):
     compra_id: Mapped[int] = mapped_column(ForeignKey("compras.id", ondelete="CASCADE"), index=True)
     producto_id: Mapped[int] = mapped_column(ForeignKey("productos.id"))
     cantidad: Mapped[float] = mapped_column(Float)
-    costo_unit: Mapped[float] = mapped_column(Float)
+    costo_unit: Mapped[Centavos] = mapped_column(Integer)
     iva_pct: Mapped[float] = mapped_column(Float, default=0)
-    subtotal: Mapped[float] = mapped_column(Float, default=0)
+    subtotal: Mapped[Centavos] = mapped_column(Integer, default=0)
 
     compra: Mapped[Compra] = relationship(back_populates="lineas")
     producto: Mapped[Producto] = relationship(lazy="joined")
@@ -216,7 +226,7 @@ class OrdenItem(Base):
     servicio_id: Mapped[int | None] = mapped_column(ForeignKey("servicios.id"))
     descripcion: Mapped[str | None] = mapped_column(String)
     cantidad: Mapped[float] = mapped_column(Float, default=1)
-    precio_unit: Mapped[float] = mapped_column(Float, default=0)
+    precio_unit: Mapped[Centavos] = mapped_column(Integer, default=0)
     iva_pct: Mapped[float] = mapped_column(Float, default=0)
 
     orden: Mapped[Orden] = relationship(back_populates="items")
@@ -231,14 +241,14 @@ class Venta(Base):
     cliente_id: Mapped[int | None] = mapped_column(ForeignKey("terceros.id"), index=True)
     orden_id: Mapped[int | None] = mapped_column(ForeignKey("ordenes.id"))
     moto_id: Mapped[int | None] = mapped_column(ForeignKey("motos.id"))
-    subtotal: Mapped[float] = mapped_column(Float, default=0)
-    descuento: Mapped[float] = mapped_column(Float, default=0)
-    iva: Mapped[float] = mapped_column(Float, default=0)
-    total: Mapped[float] = mapped_column(Float, default=0)
-    costo_total: Mapped[float] = mapped_column(Float, default=0)
+    subtotal: Mapped[Centavos] = mapped_column(Integer, default=0)
+    descuento: Mapped[Centavos] = mapped_column(Integer, default=0)
+    iva: Mapped[Centavos] = mapped_column(Integer, default=0)
+    total: Mapped[Centavos] = mapped_column(Integer, default=0)
+    costo_total: Mapped[Centavos] = mapped_column(Integer, default=0)
     forma_pago: Mapped[str] = mapped_column(String, default="contado")
     metodo: Mapped[str | None] = mapped_column(String, default="efectivo")
-    saldo: Mapped[float] = mapped_column(Float, default=0)
+    saldo: Mapped[Centavos] = mapped_column(Integer, default=0)
     estado: Mapped[str] = mapped_column(String, default="activa", index=True)
     nota: Mapped[str | None] = mapped_column(String)
     creado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
@@ -259,12 +269,12 @@ class VentaLinea(Base):
     servicio_id: Mapped[int | None] = mapped_column(ForeignKey("servicios.id"))
     descripcion: Mapped[str | None] = mapped_column(String)
     cantidad: Mapped[float] = mapped_column(Float, default=1)
-    precio_unit: Mapped[float] = mapped_column(Float, default=0)
-    descuento: Mapped[float] = mapped_column(Float, default=0)
+    precio_unit: Mapped[Centavos] = mapped_column(Integer, default=0)
+    descuento: Mapped[Centavos] = mapped_column(Integer, default=0)
     iva_pct: Mapped[float] = mapped_column(Float, default=0)
-    subtotal: Mapped[float] = mapped_column(Float, default=0)
-    costo_unit: Mapped[float] = mapped_column(Float, default=0)
-    costo_total: Mapped[float] = mapped_column(Float, default=0)
+    subtotal: Mapped[Centavos] = mapped_column(Integer, default=0)
+    costo_unit: Mapped[Centavos] = mapped_column(Integer, default=0)
+    costo_total: Mapped[Centavos] = mapped_column(Integer, default=0)
 
     venta: Mapped[Venta] = relationship(back_populates="lineas")
 
@@ -275,7 +285,7 @@ class Gasto(Base):
     fecha: Mapped[date] = mapped_column(Date, index=True)
     cuenta_id: Mapped[int] = mapped_column(ForeignKey("cuentas.id"))
     descripcion: Mapped[str | None] = mapped_column(String)
-    monto: Mapped[float] = mapped_column(Float)
+    monto: Mapped[Centavos] = mapped_column(Integer)
     metodo: Mapped[str] = mapped_column(String, default="efectivo")
     proveedor_id: Mapped[int | None] = mapped_column(ForeignKey("terceros.id"))
     estado: Mapped[str] = mapped_column(String, default="activo")
@@ -294,7 +304,7 @@ class Pago(Base):
     tercero_id: Mapped[int | None] = mapped_column(ForeignKey("terceros.id"))
     doc_tipo: Mapped[str | None] = mapped_column(String)
     doc_id: Mapped[int | None] = mapped_column(Integer)
-    monto: Mapped[float] = mapped_column(Float)
+    monto: Mapped[Centavos] = mapped_column(Integer)
     metodo: Mapped[str] = mapped_column(String, default="efectivo")
     nota: Mapped[str | None] = mapped_column(String)
     estado: Mapped[str] = mapped_column(String, default="activo")

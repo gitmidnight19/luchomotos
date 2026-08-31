@@ -7,6 +7,7 @@ from typing import cast
 from sqlalchemy.orm import Session
 
 from ..database import hoy
+from ..dinero import Centavos, multiplicar, porcentaje
 from ..errores import NoEncontrado, ReglaNegocio
 from ..models import Orden, OrdenItem, Venta
 from ..schemas import (
@@ -127,7 +128,10 @@ def facturar(db: Session, orden_id: int, datos: FacturarOrdenIn) -> Venta:
     )
 
 
-def total_orden(orden: Orden) -> float:
-    return round(
-        sum(i.cantidad * i.precio_unit * (1 + (i.iva_pct or 0) / 100.0) for i in orden.items), 2
-    )
+def total_orden(orden: Orden) -> Centavos:
+    """Total estimado de la orden, con IVA, en centavos."""
+    total: Centavos = 0
+    for item in orden.items:
+        base = multiplicar(item.precio_unit, item.cantidad)
+        total += base + porcentaje(base, item.iva_pct or 0)
+    return total

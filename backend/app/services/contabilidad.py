@@ -8,9 +8,10 @@ from __future__ import annotations
 
 from datetime import date
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from ..dinero import Centavos
 from ..errores import NoEncontrado, ReglaNegocio
 from ..models import Asiento, AsientoLinea, Cuenta
 
@@ -19,11 +20,8 @@ from ..models import Asiento, AsientoLinea, Cuenta
 #: (depreciacion acumulada, devoluciones en ventas) resten dentro de su grupo.
 GRUPOS_DEUDORES = ("ACTIVO", "COSTO", "GASTO")
 
-Movimiento = tuple[str, float, float, str | None]
-
-
-def r2(x: float | int | None) -> float:
-    return round(float(x or 0), 2)
+#: (codigo de cuenta, debe, haber, detalle). Los importes van en centavos.
+Movimiento = tuple[str, Centavos, Centavos, str | None]
 
 
 # --------------------------------------------------------------- utilidades
@@ -69,10 +67,10 @@ def registrar_asiento(
     Devuelve None si todos los movimientos son cero. Lanza `ReglaNegocio` si el
     asiento queda descuadrado.
     """
-    limpios: list[tuple[Cuenta, float, float, str | None]] = []
-    total_debe = total_haber = 0.0
+    limpios: list[tuple[Cuenta, Centavos, Centavos, str | None]] = []
+    total_debe = total_haber = 0
     for codigo, debe, haber, detalle in movimientos:
-        debe, haber = r2(debe), r2(haber)
+        debe, haber = int(debe), int(haber)
         if debe == 0 and haber == 0:
             continue
         limpios.append((cuenta_por_codigo(db, codigo), debe, haber, detalle))
@@ -81,9 +79,12 @@ def registrar_asiento(
 
     if not limpios:
         return None
-    if abs(r2(total_debe) - r2(total_haber)) > 0.05:
+    # Igualdad exacta: con centavos enteros no hay error de representacion que
+    # justifique una tolerancia. Cualquier diferencia es un defecto de calculo.
+    if total_debe != total_haber:
         raise ReglaNegocio(
-            f"Asiento descuadrado: debe {total_debe:.2f} contra haber {total_haber:.2f}"
+            f"Asiento descuadrado en {total_debe - total_haber} centavos: "
+            f"debe {total_debe} contra haber {total_haber}"
         )
 
     asiento = Asiento(
@@ -122,11 +123,32 @@ def saldos_por_cuenta(
     hasta: date | None = None,
     solo_movimiento: bool = True,
 ) -> list[dict]:
-    condiciones = [Asiento.anulado == 0]
+    # El periodo se filtra DENTRO de una subconsulta que ya viene agregada, y el
+    # plan de cuentas se le une por fuera. Poner las condiciones en el ON de un
+    # LEFT JOIN no filtraba nada: cuando la union fallaba, la linea del asiento
+    # seguia existiendo y su importe se sumaba igual, asi que el estado de
+    # resultados de un dia devolvia lo mismo que el de treinta anios.
+    #
+    # El libro es append-only: una anulacion publica un contra-asiento que ya
+    # neutraliza al original, por eso no se filtra por `anulado` (contaria la
+    # reversion dos veces). El flag es informativo, se muestra en el libro diario.
+    condiciones = []
     if desde:
         condiciones.append(Asiento.fecha >= desde)
     if hasta:
         condiciones.append(Asiento.fecha <= hasta)
+
+    movimientos = (
+        select(
+            AsientoLinea.cuenta_id.label("cuenta_id"),
+            func.sum(AsientoLinea.debe).label("debe"),
+            func.sum(AsientoLinea.haber).label("haber"),
+        )
+        .join(Asiento, Asiento.id == AsientoLinea.asiento_id)
+        .where(*condiciones)
+        .group_by(AsientoLinea.cuenta_id)
+        .subquery()
+    )
 
     consulta = (
         select(
@@ -135,23 +157,17 @@ def saldos_por_cuenta(
             Cuenta.nombre,
             Cuenta.tipo,
             Cuenta.naturaleza,
-            func.coalesce(func.sum(AsientoLinea.debe), 0.0).label("debe"),
-            func.coalesce(func.sum(AsientoLinea.haber), 0.0).label("haber"),
+            func.coalesce(movimientos.c.debe, 0).label("debe"),
+            func.coalesce(movimientos.c.haber, 0).label("haber"),
         )
         .select_from(Cuenta)
-        .join(AsientoLinea, AsientoLinea.cuenta_id == Cuenta.id, isouter=True)
-        .join(
-            Asiento,
-            and_(Asiento.id == AsientoLinea.asiento_id, *condiciones),
-            isouter=True,
-        )
-        .group_by(Cuenta.id)
+        .join(movimientos, movimientos.c.cuenta_id == Cuenta.id, isouter=True)
         .order_by(Cuenta.codigo)
     )
 
     salida: list[dict] = []
     for fila in db.execute(consulta).mappings():
-        debe, haber = r2(fila["debe"]), r2(fila["haber"])
+        debe, haber = int(fila["debe"]), int(fila["haber"])
         if solo_movimiento and debe == 0 and haber == 0:
             continue
         neto = debe - haber
@@ -164,7 +180,7 @@ def saldos_por_cuenta(
                 "naturaleza": fila["naturaleza"],
                 "debe": debe,
                 "haber": haber,
-                "saldo": r2(neto if fila["tipo"] in GRUPOS_DEUDORES else -neto),
+                "saldo": neto if fila["tipo"] in GRUPOS_DEUDORES else -neto,
             }
         )
     return salida
@@ -175,11 +191,11 @@ def estado_resultados(db: Session, desde: date, hasta: date) -> dict:
     ingresos = [s for s in saldos if s["tipo"] == "INGRESO"]
     costos = [s for s in saldos if s["tipo"] == "COSTO"]
     gastos = [s for s in saldos if s["tipo"] == "GASTO"]
-    total_ingresos = r2(sum(s["saldo"] for s in ingresos))
-    total_costos = r2(sum(s["saldo"] for s in costos))
-    total_gastos = r2(sum(s["saldo"] for s in gastos))
-    bruta = r2(total_ingresos - total_costos)
-    neta = r2(bruta - total_gastos)
+    total_ingresos = sum(s["saldo"] for s in ingresos)
+    total_costos = sum(s["saldo"] for s in costos)
+    total_gastos = sum(s["saldo"] for s in gastos)
+    bruta = total_ingresos - total_costos
+    neta = bruta - total_gastos
     return {
         "desde": desde,
         "hasta": hasta,
@@ -191,8 +207,8 @@ def estado_resultados(db: Session, desde: date, hasta: date) -> dict:
         "total_gastos": total_gastos,
         "utilidad_bruta": bruta,
         "utilidad_neta": neta,
-        "margen_bruto": r2(bruta / total_ingresos * 100) if total_ingresos else 0.0,
-        "margen_neto": r2(neta / total_ingresos * 100) if total_ingresos else 0.0,
+        "margen_bruto": round(bruta / total_ingresos * 100, 2) if total_ingresos else 0.0,
+        "margen_neto": round(neta / total_ingresos * 100, 2) if total_ingresos else 0.0,
     }
 
 
@@ -205,9 +221,9 @@ def balance_general(db: Session, hasta: date) -> dict:
     inicio = cfg(db, "inicio_ejercicio") or f"{hasta.year}-01-01"
     resultados = estado_resultados(db, date.fromisoformat(inicio), hasta)
 
-    total_activos = r2(sum(s["saldo"] for s in activos))
-    total_pasivos = r2(sum(s["saldo"] for s in pasivos))
-    total_patrimonio = r2(sum(s["saldo"] for s in patrimonio) + resultados["utilidad_neta"])
+    total_activos = sum(s["saldo"] for s in activos)
+    total_pasivos = sum(s["saldo"] for s in pasivos)
+    total_patrimonio = sum(s["saldo"] for s in patrimonio) + resultados["utilidad_neta"]
     return {
         "hasta": hasta,
         "activos": activos,
@@ -217,7 +233,7 @@ def balance_general(db: Session, hasta: date) -> dict:
         "total_activos": total_activos,
         "total_pasivos": total_pasivos,
         "total_patrimonio": total_patrimonio,
-        "diferencia": r2(total_activos - total_pasivos - total_patrimonio),
+        "diferencia": total_activos - total_pasivos - total_patrimonio,
     }
 
 
@@ -233,11 +249,11 @@ def libro_mayor(db: Session, cuenta_id: int, desde: date, hasta: date) -> dict:
         )
         .select_from(AsientoLinea)
         .join(Asiento, Asiento.id == AsientoLinea.asiento_id)
-        .where(AsientoLinea.cuenta_id == cuenta_id, Asiento.anulado == 0, Asiento.fecha < desde)
+        .where(AsientoLinea.cuenta_id == cuenta_id, Asiento.fecha < desde)
     ).one()
 
     signo = 1 if cuenta.naturaleza == "D" else -1
-    saldo = r2((anterior[0] - anterior[1]) * signo)
+    saldo = int(anterior[0] - anterior[1]) * signo
     saldo_inicial = saldo
 
     filas = db.execute(
@@ -254,7 +270,6 @@ def libro_mayor(db: Session, cuenta_id: int, desde: date, hasta: date) -> dict:
         .join(Asiento, Asiento.id == AsientoLinea.asiento_id)
         .where(
             AsientoLinea.cuenta_id == cuenta_id,
-            Asiento.anulado == 0,
             Asiento.fecha >= desde,
             Asiento.fecha <= hasta,
         )
@@ -263,7 +278,7 @@ def libro_mayor(db: Session, cuenta_id: int, desde: date, hasta: date) -> dict:
 
     movimientos = []
     for fila in filas:
-        saldo = r2(saldo + (fila["debe"] - fila["haber"]) * signo)
+        saldo = saldo + int(fila["debe"] - fila["haber"]) * signo
         movimientos.append({**dict(fila), "saldo": saldo})
 
     return {

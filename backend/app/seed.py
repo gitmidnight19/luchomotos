@@ -63,18 +63,18 @@ CATEGORIAS = [
     "Otros",
 ]
 
-# codigo, nombre, precio, duracion en minutos
-SERVICIOS: list[tuple[str, str, float, int]] = [
-    ("S001", "Cambio de aceite", 25000, 30),
-    ("S002", "Sincronizacion / afinado", 60000, 90),
-    ("S003", "Ajuste y limpieza de frenos", 35000, 45),
-    ("S004", "Cambio de guayas", 20000, 30),
-    ("S005", "Ajuste de cadena y kit de arrastre", 25000, 40),
-    ("S006", "Revision electrica general", 45000, 60),
-    ("S007", "Mantenimiento preventivo completo", 120000, 180),
-    ("S008", "Montaje de llanta", 15000, 20),
-    ("S009", "Diagnostico general", 20000, 30),
-    ("S010", "Mano de obra por hora", 30000, 60),
+# codigo, nombre, precio EN CENTAVOS, duracion en minutos
+SERVICIOS: list[tuple[str, str, int, int]] = [
+    ("S001", "Cambio de aceite", 2500000, 30),
+    ("S002", "Sincronizacion / afinado", 6000000, 90),
+    ("S003", "Ajuste y limpieza de frenos", 3500000, 45),
+    ("S004", "Cambio de guayas", 2000000, 30),
+    ("S005", "Ajuste de cadena y kit de arrastre", 2500000, 40),
+    ("S006", "Revision electrica general", 4500000, 60),
+    ("S007", "Mantenimiento preventivo completo", 12000000, 180),
+    ("S008", "Montaje de llanta", 1500000, 20),
+    ("S009", "Diagnostico general", 2000000, 30),
+    ("S010", "Mano de obra por hora", 3000000, 60),
 ]
 
 

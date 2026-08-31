@@ -5,6 +5,7 @@ from __future__ import annotations
 from sqlalchemy.orm import Session
 
 from ..database import hoy
+from ..dinero import Centavos, multiplicar, porcentaje
 from ..errores import NoEncontrado, ReglaNegocio
 from ..models import Compra, CompraLinea
 from ..schemas import CompraIn
@@ -14,7 +15,6 @@ from .contabilidad import (
     anular_asientos,
     cuenta_medio,
     iva_general,
-    r2,
     registrar_asiento,
 )
 from .ventas import consecutivo
@@ -44,14 +44,15 @@ def crear(db: Session, datos: CompraIn) -> Compra:
         compra.numero = consecutivo(db, "prefijo_compra", compra.id)
 
     iva_def = iva_general(db)
-    subtotal = iva_total = 0.0
+    subtotal: Centavos = 0
+    iva_total: Centavos = 0
 
     for linea in datos.lineas:
         producto = inventario.obtener_producto(db, linea.producto_id)
         iva_pct = linea.iva_pct if linea.iva_pct is not None else iva_def
-        base = r2(linea.cantidad * linea.costo_unit)
+        base = multiplicar(linea.costo_unit, linea.cantidad)
         subtotal += base
-        iva_total += r2(base * iva_pct / 100.0)
+        iva_total += porcentaje(base, iva_pct)
 
         compra.lineas.append(
             CompraLinea(
@@ -74,12 +75,12 @@ def crear(db: Session, datos: CompraIn) -> Compra:
             f"Compra {compra.numero}",
         )
         if linea.precio_venta:
-            producto.precio_venta = float(linea.precio_venta)
+            producto.precio_venta = linea.precio_venta
 
-    compra.subtotal = r2(subtotal)
-    compra.iva = r2(iva_total)
-    compra.total = r2(compra.subtotal + compra.iva)
-    compra.saldo = compra.total if datos.forma_pago == "credito" else 0.0
+    compra.subtotal = subtotal
+    compra.iva = iva_total
+    compra.total = compra.subtotal + compra.iva
+    compra.saldo = compra.total if datos.forma_pago == "credito" else 0
 
     movs: list[Movimiento] = [
         (CTA_INVENTARIO, compra.subtotal, 0, f"Entrada de inventario {compra.numero}")
@@ -130,8 +131,10 @@ def anular(db: Session, compra_id: int, motivo: str = "Anulacion de compra") -> 
             "COMPRA-ANUL",
             compra.id,
             f"Anulacion compra {compra.numero}",
+            # Exactamente lo que entro con la compra.
+            valor=linea.subtotal,
         )
     anular_asientos(db, "COMPRA", compra.id, fecha, f"{motivo} {compra.numero}")
     compra.estado = "anulada"
-    compra.saldo = 0.0
+    compra.saldo = 0
     db.flush()

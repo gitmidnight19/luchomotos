@@ -20,7 +20,6 @@ os.environ.setdefault("TALLER_DATA_DIR", tempfile.mkdtemp(prefix="taller-prop-")
 
 from datetime import date
 
-import pytest
 from hypothesis import HealthCheck, settings
 from hypothesis import strategies as st
 from hypothesis.stateful import (
@@ -33,7 +32,7 @@ from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
-from app.database import Base
+from app.database import Base, configurar_sqlite
 from app.errores import ReglaNegocio
 from app.models import (
     Asiento,
@@ -81,10 +80,13 @@ class TallerEnOperacion(RuleBasedStateMachine):
         # SQLite en memoria: Hypothesis corre cientos de secuencias y el disco
         # lo haria inviable. StaticPool mantiene una sola conexion, que es lo
         # que hace que la base sobreviva entre sesiones del mismo motor.
-        self.engine = create_engine(
-            "sqlite://",
-            connect_args={"check_same_thread": False},
-            poolclass=StaticPool,
+        self.engine = configurar_sqlite(
+            create_engine(
+                "sqlite://",
+                connect_args={"check_same_thread": False},
+                poolclass=StaticPool,
+            ),
+            wal=False,  # en memoria no aplica
         )
         Base.metadata.create_all(self.engine)
         self.db = Session(self.engine)
@@ -202,7 +204,7 @@ class TallerEnOperacion(RuleBasedStateMachine):
         factura = self.db.get(Venta, venta)
         if factura is None or factura.saldo <= 0:
             return
-        monto = round(factura.saldo * pct_abono / 100, 2)
+        monto = factura.saldo * pct_abono // 100
         if monto <= 0:
             return
         srv_tesoreria.registrar_pago(
@@ -215,7 +217,7 @@ class TallerEnOperacion(RuleBasedStateMachine):
         factura = self.db.get(Compra, compra)
         if factura is None or factura.saldo <= 0:
             return
-        monto = round(factura.saldo * pct_abono / 100, 2)
+        monto = factura.saldo * pct_abono // 100
         if monto <= 0:
             return
         srv_tesoreria.registrar_pago(
@@ -264,7 +266,7 @@ class TallerEnOperacion(RuleBasedStateMachine):
     def i2_la_ecuacion_contable_se_sostiene(self) -> None:
         """Activo = Pasivo + Patrimonio."""
         balance = balance_general(self.db, FECHA)
-        assert balance["diferencia"] == 0, f"Descuadre de {balance['diferencia']}"
+        assert balance["diferencia"] == 0, f"Descuadre de {balance['diferencia']} centavos"
 
     @invariant()
     def i3_el_kardex_explica_la_existencia(self) -> None:
@@ -284,21 +286,23 @@ class TallerEnOperacion(RuleBasedStateMachine):
     def i4_la_cuenta_de_control_ata_con_el_inventario(self) -> None:
         """El saldo de 1435 es el valor del inventario segun el auxiliar.
 
-        Este es el invariante que la implementacion con `float` rompe: se
-        contabiliza el costo redondeado de cada salida, pero el auxiliar
-        conserva `stock * costo_promedio`, y ambos divergen.
+        Se sostiene por construccion desde que el auxiliar almacena el VALOR
+        (`valor_inventario`) en vez del costo promedio redondeado: el asiento
+        mueve exactamente el mismo entero que se suma o resta al producto.
         """
-        contable = self.db.scalar(
-            select(func.coalesce(func.sum(AsientoLinea.debe - AsientoLinea.haber), 0.0))
-            .select_from(AsientoLinea)
-            .join(Asiento, Asiento.id == AsientoLinea.asiento_id)
-            .join(Cuenta, Cuenta.id == AsientoLinea.cuenta_id)
-            .where(Cuenta.codigo == "1435", Asiento.anulado == 0)
+        contable = int(
+            self.db.scalar(
+                select(func.coalesce(func.sum(AsientoLinea.debe - AsientoLinea.haber), 0))
+                .select_from(AsientoLinea)
+                .join(Asiento, Asiento.id == AsientoLinea.asiento_id)
+                .join(Cuenta, Cuenta.id == AsientoLinea.cuenta_id)
+                .where(Cuenta.codigo == "1435")
+            )
         )
-        auxiliar = sum(p.stock * p.costo_promedio for p in self.db.scalars(select(Producto)).all())
-        assert abs(contable - auxiliar) < 0.005, (
-            f"La cuenta 1435 marca {contable:.4f} pero el inventario vale "
-            f"{auxiliar:.4f} (desviacion {contable - auxiliar:.4f})"
+        auxiliar = sum(p.valor_inventario for p in self.db.scalars(select(Producto)).all())
+        assert contable == auxiliar, (
+            f"La cuenta 1435 marca {contable} pero el inventario vale {auxiliar} "
+            f"(desviacion {contable - auxiliar} centavos)"
         )
 
     @invariant()
@@ -321,30 +325,27 @@ class TallerEnOperacion(RuleBasedStateMachine):
             )
             if venta.forma_pago != "credito":
                 continue  # al contado se recauda todo en el acto
-            assert abs(abonado + venta.saldo - venta.total) < 0.005, (
+            assert abonado + venta.saldo == venta.total, (
                 f"Venta {venta.numero}: abonos {abonado} + saldo {venta.saldo} "
                 f"contra total {venta.total}"
             )
 
 
-# Tres invariantes fallan contra la implementacion con `float`, y Hypothesis los
-# encontro en los primeros pasos generados:
+# Estos invariantes fallaban contra la implementacion con `float`, y Hypothesis
+# los encontro en los primeros pasos generados:
 #
 #   I1  debe == haber      ->  449714.09 == 449714.08999999997
-#   I4  1435 == auxiliar   ->  la cuenta de control se desvia 1.700 del inventario
+#   I4  1435 == auxiliar   ->  la cuenta de control se desviaba 1.700 del inventario
 #   I5  total == sub+iva   ->  142362.08 == 119632.0 + 22730.08
 #
-# `strict=True` hace que la prueba falle si algun dia PASA sin quitar el marcador:
-# cuando el refactor a centavos enteros aterrice, esto obliga a borrar esta linea.
-pytestmark = pytest.mark.xfail(
-    strict=True,
-    reason="Los importes son float: los invariantes exactos no se sostienen. "
-    "Se levanta con el refactor a centavos enteros.",
-)
+# Con centavos enteros los tres se sostienen con igualdad exacta. Ademas
+# destaparon un defecto del propio refactor: al anular, el inventario reingresaba
+# `costo_unit x cantidad` mientras el contra-asiento reversaba `costo_total`, y
+# no eran el mismo entero. De ahi el parametro `valor` de `inventario.mover`.
 
 TallerEnOperacion.TestCase.settings = settings(
-    max_examples=30,
-    stateful_step_count=15,
+    max_examples=100,
+    stateful_step_count=25,
     deadline=None,
     suppress_health_check=[HealthCheck.too_slow, HealthCheck.filter_too_much],
 )

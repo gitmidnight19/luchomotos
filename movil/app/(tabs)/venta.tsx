@@ -13,7 +13,7 @@ import {
   useTerceros,
 } from '../../src/api/hooks';
 import type { FormaPago, MetodoPago } from '../../src/api/tipos';
-import { aNumero, dinero } from '../../src/lib/formato';
+import { aCentavos, aNumero, dinero, enPesos, multiplicar, tasa } from '../../src/lib/formato';
 import {
   CampoNumero,
   CampoTexto,
@@ -71,9 +71,9 @@ export default function PuntoDeVenta() {
     let subtotal = 0;
     let iva = 0;
     for (const l of lineas) {
-      const base = l.cantidad * l.precio_unit - l.descuento;
+      const base = multiplicar(l.precio_unit, l.cantidad) - l.descuento;
       subtotal += base;
-      iva += (base * l.iva_pct) / 100;
+      iva += tasa(base, l.iva_pct);
     }
     return { subtotal, iva, total: subtotal + iva };
   }, [lineas]);
@@ -257,7 +257,7 @@ export default function PuntoDeVenta() {
               </View>
               <View style={{ paddingHorizontal: 12, paddingBottom: 10, alignItems: 'flex-end' }}>
                 <Text style={{ fontWeight: '700' }}>
-                  {dinero(l.cantidad * l.precio_unit - l.descuento)}
+                  {dinero(multiplicar(l.precio_unit, l.cantidad) - l.descuento)}
                 </Text>
               </View>
             </View>
@@ -364,13 +364,13 @@ export default function PuntoDeVenta() {
                 />
                 <CampoNumero
                   label="Precio unitario"
-                  value={String(editando.precio_unit)}
-                  onChangeText={(t) => setEditando({ ...editando, precio_unit: aNumero(t) })}
+                  value={String(enPesos(editando.precio_unit))}
+                  onChangeText={(t) => setEditando({ ...editando, precio_unit: aCentavos(t) })}
                 />
                 <CampoNumero
                   label="Descuento"
-                  value={String(editando.descuento)}
-                  onChangeText={(t) => setEditando({ ...editando, descuento: aNumero(t) })}
+                  value={String(enPesos(editando.descuento))}
+                  onChangeText={(t) => setEditando({ ...editando, descuento: aCentavos(t) })}
                 />
                 <CampoNumero
                   label="IVA %"

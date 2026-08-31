@@ -20,11 +20,12 @@ from ..models import (
     Venta,
     VentaLinea,
 )
-from .contabilidad import cfg, estado_resultados, r2, saldos_por_cuenta
+from .contabilidad import cfg, estado_resultados, saldos_por_cuenta
 
 
-def _suma(db: Session, columna, *filtros) -> float:
-    return r2(db.scalar(select(func.coalesce(func.sum(columna), 0.0)).where(*filtros)) or 0)
+def _suma(db: Session, columna, *filtros) -> int:
+    """Suma de una columna monetaria, en centavos."""
+    return int(db.scalar(select(func.coalesce(func.sum(columna), 0)).where(*filtros)) or 0)
 
 
 def dashboard(db: Session) -> dict:
@@ -49,22 +50,17 @@ def dashboard(db: Session) -> dict:
     er_anio = estado_resultados(db, inicio_anio, hoy_)
 
     saldos = {s["codigo"]: s["saldo"] for s in saldos_por_cuenta(db, None, hoy_)}
-    caja = r2(saldos.get(cfg(db, "cuenta_caja", "1105") or "1105", 0))
-    banco = r2(saldos.get(cfg(db, "cuenta_banco", "1110") or "1110", 0))
+    caja = saldos.get(cfg(db, "cuenta_caja", "1105") or "1105", 0)
+    banco = saldos.get(cfg(db, "cuenta_banco", "1110") or "1110", 0)
 
     cxc = _suma(db, Venta.saldo, activa, Venta.saldo > 0)
     cxp = _suma(db, Compra.saldo, Compra.estado == "activa", Compra.saldo > 0)
-    inv_costo = r2(
+    # El valor del inventario se lee del auxiliar, no se recalcula: es
+    # exactamente el mismo entero que sostiene la cuenta de control 1435.
+    inv_costo = _suma(db, Producto.valor_inventario, Producto.activo == 1)
+    inv_venta = int(
         db.scalar(
-            select(func.coalesce(func.sum(Producto.stock * Producto.costo_promedio), 0.0)).where(
-                Producto.activo == 1
-            )
-        )
-        or 0
-    )
-    inv_venta = r2(
-        db.scalar(
-            select(func.coalesce(func.sum(Producto.stock * Producto.precio_venta), 0.0)).where(
+            select(func.coalesce(func.sum(Producto.stock * Producto.precio_venta), 0)).where(
                 Producto.activo == 1
             )
         )
@@ -76,9 +72,9 @@ def dashboard(db: Session) -> dict:
             "id": p.id,
             "sku": p.sku,
             "nombre": p.nombre,
-            "stock": r2(p.stock),
-            "stock_min": r2(p.stock_min),
-            "precio_venta": r2(p.precio_venta),
+            "stock": round(p.stock, 4),
+            "stock_min": round(p.stock_min, 4),
+            "precio_venta": p.precio_venta,
         }
         for p in db.scalars(
             select(Producto)
@@ -115,12 +111,12 @@ def dashboard(db: Session) -> dict:
     for i in range(30):
         dia = desde + timedelta(days=i)
         fila = agrupado.get(dia)
-        v = r2(fila["ventas"]) if fila else 0.0
-        c = r2(fila["costo"]) if fila else 0.0
-        serie.append({"fecha": dia, "ventas": v, "costo": c, "margen": r2(v - c)})
+        v = int(fila["ventas"]) if fila else 0
+        c = int(fila["costo"]) if fila else 0
+        serie.append({"fecha": dia, "ventas": v, "costo": c, "margen": v - c})
 
     top_productos = [
-        {"nombre": f["nombre"], "cant": r2(f["cant"]), "monto": r2(f["monto"])}
+        {"nombre": f["nombre"], "cant": round(f["cant"], 4), "monto": int(f["monto"])}
         for f in db.execute(
             select(
                 Producto.nombre.label("nombre"),
@@ -137,7 +133,7 @@ def dashboard(db: Session) -> dict:
     ]
 
     top_servicios = [
-        {"nombre": f["nombre"], "cant": r2(f["cant"]), "monto": r2(f["monto"])}
+        {"nombre": f["nombre"], "cant": round(f["cant"], 4), "monto": int(f["monto"])}
         for f in db.execute(
             select(
                 VentaLinea.descripcion.label("nombre"),
@@ -157,7 +153,7 @@ def dashboard(db: Session) -> dict:
         "ventas_hoy": ventas_hoy,
         "ventas_mes": ventas_mes,
         "num_ventas_mes": num_ventas_mes,
-        "ticket_promedio": r2(ventas_mes / num_ventas_mes) if num_ventas_mes else 0.0,
+        "ticket_promedio": round(ventas_mes / num_ventas_mes) if num_ventas_mes else 0,
         "costo_mes": costo_mes,
         "utilidad_bruta_mes": er_mes["utilidad_bruta"],
         "utilidad_neta_mes": er_mes["utilidad_neta"],
@@ -167,7 +163,7 @@ def dashboard(db: Session) -> dict:
         "ingresos_anio": er_anio["total_ingresos"],
         "caja": caja,
         "banco": banco,
-        "efectivo_total": r2(caja + banco),
+        "efectivo_total": caja + banco,
         "cxc": cxc,
         "cxp": cxp,
         "inventario_valor": inv_costo,
@@ -195,8 +191,8 @@ def cartera(db: Session) -> dict:
             "tercero": v.cliente.nombre if v.cliente else None,
             "telefono": v.cliente.telefono if v.cliente else None,
             "dias": dias(v.fecha),
-            "total": r2(v.total),
-            "saldo": r2(v.saldo),
+            "total": v.total,
+            "saldo": v.saldo,
         }
         for v in db.scalars(
             select(Venta).where(Venta.estado == "activa", Venta.saldo > 0.01).order_by(Venta.fecha)
@@ -210,8 +206,8 @@ def cartera(db: Session) -> dict:
             "tercero": c.proveedor.nombre if c.proveedor else None,
             "telefono": c.proveedor.telefono if c.proveedor else None,
             "dias": dias(c.fecha),
-            "total": r2(c.total),
-            "saldo": r2(c.saldo),
+            "total": c.total,
+            "saldo": c.saldo,
         }
         for c in db.scalars(
             select(Compra)
@@ -222,8 +218,8 @@ def cartera(db: Session) -> dict:
     return {
         "por_cobrar": por_cobrar,
         "por_pagar": por_pagar,
-        "total_cobrar": r2(sum(x["saldo"] for x in por_cobrar)),
-        "total_pagar": r2(sum(x["saldo"] for x in por_pagar)),
+        "total_cobrar": sum(x["saldo"] for x in por_cobrar),
+        "total_pagar": sum(x["saldo"] for x in por_pagar),
     }
 
 
@@ -232,8 +228,9 @@ def inventario_valorizado(db: Session) -> dict:
     for p in db.scalars(
         select(Producto).where(Producto.activo == 1).order_by(Producto.nombre)
     ).all():
-        valor_costo = r2(p.stock * p.costo_promedio)
-        valor_venta = r2(p.stock * p.precio_venta)
+        # El valor al costo se lee del auxiliar; no se recalcula desde el promedio.
+        valor_costo = p.valor_inventario
+        valor_venta = round(p.stock * p.precio_venta)
         items.append(
             {
                 "id": p.id,
@@ -242,26 +239,26 @@ def inventario_valorizado(db: Session) -> dict:
                 "categoria_id": p.categoria_id,
                 "categoria_nombre": p.categoria.nombre if p.categoria else None,
                 "unidad": p.unidad,
-                "stock": r2(p.stock),
+                "stock": round(p.stock, 4),
                 "costo_promedio": p.costo_promedio,
-                "precio_venta": r2(p.precio_venta),
-                "stock_min": r2(p.stock_min),
+                "precio_venta": p.precio_venta,
+                "stock_min": round(p.stock_min, 4),
                 "ubicacion": p.ubicacion,
                 "iva_pct": p.iva_pct,
                 "activo": p.activo,
                 "valor_costo": valor_costo,
                 "valor_venta": valor_venta,
-                "utilidad_pot": r2(valor_venta - valor_costo),
-                "margen": r2((p.precio_venta - p.costo_promedio) / p.precio_venta * 100)
+                "utilidad_pot": valor_venta - valor_costo,
+                "margen": round((p.precio_venta - p.costo_promedio) / p.precio_venta * 100, 2)
                 if p.precio_venta
                 else 0.0,
             }
         )
     return {
         "items": items,
-        "total_costo": r2(sum(i["valor_costo"] for i in items)),
-        "total_venta": r2(sum(i["valor_venta"] for i in items)),
-        "unidades": r2(sum(i["stock"] for i in items)),
+        "total_costo": sum(i["valor_costo"] for i in items),
+        "total_venta": sum(i["valor_venta"] for i in items),
+        "unidades": round(sum(i["stock"] for i in items), 4),
     }
 
 
@@ -284,19 +281,19 @@ def ventas_periodo(db: Session, desde: date, hasta: date, agrupar: str = "dia") 
 
     salida: list[dict[str, Any]] = []
     for f in filas:
-        subtotal = r2(f["subtotal"])
-        costo = r2(f["costo"])
-        utilidad = r2(subtotal - costo)
+        subtotal = int(f["subtotal"])
+        costo = int(f["costo"])
+        utilidad = subtotal - costo
         salida.append(
             {
                 "periodo": f["periodo"],
                 "num": f["num"],
                 "subtotal": subtotal,
-                "iva": r2(f["iva"]),
-                "total": r2(f["total"]),
+                "iva": int(f["iva"]),
+                "total": int(f["total"]),
                 "costo": costo,
                 "utilidad": utilidad,
-                "margen": r2(utilidad / subtotal * 100) if subtotal else 0.0,
+                "margen": round(utilidad / subtotal * 100, 2) if subtotal else 0.0,
             }
         )
     return salida
@@ -307,13 +304,13 @@ def flujo_caja(db: Session, desde: date, hasta: date) -> dict:
     banco = cfg(db, "cuenta_banco", "1110") or "1110"
     cuentas = (caja, banco)
 
-    saldo_inicial = r2(
+    saldo_inicial = int(
         db.scalar(
             select(func.coalesce(func.sum(AsientoLinea.debe - AsientoLinea.haber), 0.0))
             .select_from(AsientoLinea)
             .join(Asiento, Asiento.id == AsientoLinea.asiento_id)
             .join(Cuenta, Cuenta.id == AsientoLinea.cuenta_id)
-            .where(Cuenta.codigo.in_(cuentas), Asiento.anulado == 0, Asiento.fecha < desde)
+            .where(Cuenta.codigo.in_(cuentas), Asiento.fecha < desde)
         )
         or 0
     )
@@ -332,7 +329,6 @@ def flujo_caja(db: Session, desde: date, hasta: date) -> dict:
         .join(Cuenta, Cuenta.id == AsientoLinea.cuenta_id)
         .where(
             Cuenta.codigo.in_(cuentas),
-            Asiento.anulado == 0,
             Asiento.fecha >= desde,
             Asiento.fecha <= hasta,
         )
@@ -343,8 +339,8 @@ def flujo_caja(db: Session, desde: date, hasta: date) -> dict:
     saldo = saldo_inicial
     movimientos: list[dict[str, Any]] = []
     for f in filas:
-        entra, sale = r2(f["entra"]), r2(f["sale"])
-        saldo = r2(saldo + entra - sale)
+        entra, sale = int(f["entra"]), int(f["sale"])
+        saldo = saldo + entra - sale
         movimientos.append(
             {
                 "fecha": f["fecha"],
@@ -358,8 +354,8 @@ def flujo_caja(db: Session, desde: date, hasta: date) -> dict:
     return {
         "saldo_inicial": saldo_inicial,
         "saldo_final": saldo,
-        "total_entradas": r2(sum(m["entra"] for m in movimientos)),
-        "total_salidas": r2(sum(m["sale"] for m in movimientos)),
+        "total_entradas": sum(m["entra"] for m in movimientos),
+        "total_salidas": sum(m["sale"] for m in movimientos),
         "movimientos": movimientos,
     }
 
@@ -376,8 +372,8 @@ def libro_diario(db: Session, desde: date, hasta: date) -> list[dict]:
             {
                 "codigo": linea.cuenta.codigo,
                 "nombre": linea.cuenta.nombre,
-                "debe": r2(linea.debe),
-                "haber": r2(linea.haber),
+                "debe": linea.debe,
+                "haber": linea.haber,
                 "detalle": linea.detalle,
             }
             for linea in sorted(a.lineas, key=lambda x: -x.debe)
@@ -390,7 +386,7 @@ def libro_diario(db: Session, desde: date, hasta: date) -> list[dict]:
                 "doc_id": a.doc_id,
                 "descripcion": a.descripcion,
                 "anulado": a.anulado,
-                "total": r2(sum(x["debe"] for x in lineas)),
+                "total": sum(x["debe"] for x in lineas),
                 "lineas": lineas,
             }
         )
@@ -401,21 +397,21 @@ def balance_prueba(db: Session, desde: date, hasta: date) -> dict:
     filas = saldos_por_cuenta(db, desde, hasta)
     return {
         "filas": filas,
-        "total_debe": r2(sum(f["debe"] for f in filas)),
-        "total_haber": r2(sum(f["haber"] for f in filas)),
+        "total_debe": sum(f["debe"] for f in filas),
+        "total_haber": sum(f["haber"] for f in filas),
     }
 
 
 def impuestos(db: Session, desde: date, hasta: date) -> dict:
     saldos = {s["codigo"]: s["saldo"] for s in saldos_por_cuenta(db, desde, hasta)}
-    generado = r2(saldos.get("2408", 0))
-    descontable = r2(saldos.get("1665", 0))
+    generado = saldos.get("2408", 0)
+    descontable = saldos.get("1665", 0)
     return {
         "desde": desde,
         "hasta": hasta,
         "iva_generado": generado,
         "iva_descontable": descontable,
-        "saldo_a_pagar": r2(generado - descontable),
+        "saldo_a_pagar": generado - descontable,
     }
 
 

@@ -16,7 +16,7 @@ import {
   useTerceros,
 } from '../../src/api/hooks';
 import type { EstadoOrden, FormaPago, ItemOrdenEntrada, MetodoPago } from '../../src/api/tipos';
-import { aNumero, dinero } from '../../src/lib/formato';
+import { aNumero, dinero, multiplicar, tasa } from '../../src/lib/formato';
 import {
   CampoNumero,
   CampoTexto,
@@ -95,8 +95,11 @@ export default function OrdenTrabajo() {
   if (!esNueva && isLoading) return <Cargando />;
 
   const facturada = orden?.estado === 'facturada';
-  const subtotal = items.reduce((s, i) => s + i.cantidad * i.precio_unit, 0);
-  const iva = items.reduce((s, i) => s + (i.cantidad * i.precio_unit * (i.iva_pct ?? 0)) / 100, 0);
+  const subtotal = items.reduce((s, i) => s + multiplicar(i.precio_unit, i.cantidad), 0);
+  const iva = items.reduce(
+    (s, i) => s + tasa(multiplicar(i.precio_unit, i.cantidad), i.iva_pct ?? 0),
+    0,
+  );
 
   function cuerpo() {
     return {
@@ -285,7 +288,7 @@ export default function OrdenTrabajo() {
                 </Text>
               </View>
               <Text style={{ fontWeight: '700', marginRight: 4 }}>
-                {dinero(i.cantidad * i.precio_unit)}
+                {dinero(multiplicar(i.precio_unit, i.cantidad))}
               </Text>
               {!facturada && (
                 <IconButton

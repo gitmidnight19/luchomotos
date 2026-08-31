@@ -6,7 +6,14 @@ import { Button, Dialog, FAB, Portal, Text } from 'react-native-paper';
 
 import { useAnularCompra, useCompra, useCompras, useRegistrarPago } from '../../src/api/hooks';
 import type { MetodoPago } from '../../src/api/tipos';
-import { aNumero, cantidad, dinero, dineroCorto, fechaCorta } from '../../src/lib/formato';
+import {
+  aCentavos,
+  cantidad,
+  dinero,
+  dineroCorto,
+  enPesos,
+  fechaCorta,
+} from '../../src/lib/formato';
 import {
   AvisoError,
   CampoNumero,
@@ -41,7 +48,7 @@ export default function Compras() {
     setPagarId(null);
     if (!id) return;
     try {
-      await pagar.mutateAsync({ clase: 'pago', doc_id: id, monto: aNumero(monto), metodo });
+      await pagar.mutateAsync({ clase: 'pago', doc_id: id, monto: aCentavos(monto), metodo });
       Alert.alert('Pago registrado');
     } catch (e) {
       Alert.alert('No se pudo registrar', (e as Error).message);
@@ -150,7 +157,7 @@ export default function Compras() {
             {!!detalle && detalle.saldo > 0 && (
               <Button
                 onPress={() => {
-                  setMonto(String(detalle.saldo));
+                  setMonto(String(enPesos(detalle.saldo)));
                   setPagarId(detalle.id);
                   setVerId(null);
                 }}

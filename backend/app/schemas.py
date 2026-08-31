@@ -7,6 +7,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from .dinero import Centavos
+
 FormaPago = Literal["contado", "credito"]
 MetodoPago = Literal["efectivo", "banco"]
 MetodoGasto = Literal["efectivo", "banco", "credito"]
@@ -62,8 +64,8 @@ class TerceroOut(Base):
     direccion: str | None
     notas: str | None
     activo: int
-    deuda: float = 0
-    pordar: float = 0
+    deuda: Centavos = 0
+    pordar: Centavos = 0
 
 
 class MotoIn(BaseModel):
@@ -104,14 +106,14 @@ class ProductoIn(BaseModel):
     sku: str | None = None
     categoria_id: int | None = None
     unidad: str = "UND"
-    precio_venta: float = 0
+    precio_venta: Centavos = 0
     stock_min: float = 0
     ubicacion: str | None = None
     iva_pct: float | None = None
     activo: bool = True
     #: Solo al crear: carga inicial de existencias contra capital.
     stock_inicial: float = 0
-    costo_inicial: float = 0
+    costo_inicial: Centavos = 0
     fecha: date | None = None
 
 
@@ -124,7 +126,7 @@ class ProductoOut(Base):
     unidad: str | None
     stock: float
     costo_promedio: float
-    precio_venta: float
+    precio_venta: Centavos
     stock_min: float
     ubicacion: str | None
     iva_pct: float | None
@@ -134,7 +136,7 @@ class ProductoOut(Base):
 class ServicioIn(BaseModel):
     nombre: str = Field(min_length=1)
     codigo: str | None = None
-    precio: float = 0
+    precio: Centavos = 0
     duracion_min: int = 0
     activo: bool = True
 
@@ -143,7 +145,7 @@ class ServicioOut(Base):
     id: int
     codigo: str | None
     nombre: str
-    precio: float
+    precio: Centavos
     duracion_min: int | None
     activo: int
 
@@ -155,11 +157,11 @@ class KardexOut(Base):
     doc_tipo: str | None
     doc_id: int | None
     cantidad: float
-    costo_unit: float
-    costo_total: float
+    costo_unit: Centavos
+    costo_total: Centavos
     saldo_cant: float
-    saldo_costo: float
-    saldo_unit: float
+    saldo_costo: Centavos
+    saldo_unit: Centavos
     nota: str | None
 
 
@@ -167,7 +169,7 @@ class AjusteIn(BaseModel):
     producto_id: int
     cantidad: float
     modo: Literal["conteo", "delta"] = "conteo"
-    costo_unit: float | None = None
+    costo_unit: Centavos | None = None
     fecha: date | None = None
     nota: str | None = None
 
@@ -179,8 +181,8 @@ class VentaLineaIn(BaseModel):
     servicio_id: int | None = None
     descripcion: str | None = None
     cantidad: float = Field(default=1, gt=0)
-    precio_unit: float = Field(default=0, ge=0)
-    descuento: float = Field(default=0, ge=0)
+    precio_unit: Centavos = Field(default=0, ge=0)
+    descuento: Centavos = Field(default=0, ge=0)
     iva_pct: float | None = None
 
 
@@ -202,11 +204,11 @@ class VentaLineaOut(Base):
     servicio_id: int | None
     descripcion: str | None
     cantidad: float
-    precio_unit: float
-    descuento: float
+    precio_unit: Centavos
+    descuento: Centavos
     iva_pct: float
-    subtotal: float
-    costo_total: float
+    subtotal: Centavos
+    costo_total: Centavos
 
 
 class VentaOut(Base):
@@ -216,14 +218,14 @@ class VentaOut(Base):
     cliente_id: int | None
     cliente_nombre: str | None = None
     moto_id: int | None
-    subtotal: float
-    descuento: float
-    iva: float
-    total: float
-    costo_total: float
+    subtotal: Centavos
+    descuento: Centavos
+    iva: Centavos
+    total: Centavos
+    costo_total: Centavos
     forma_pago: FormaPago
     metodo: MetodoPago | None
-    saldo: float
+    saldo: Centavos
     estado: EstadoDocumento
     nota: str | None
 
@@ -236,7 +238,7 @@ class PagoOut(Base):
     tercero_nombre: str | None = None
     doc_tipo: str | None
     doc_id: int | None
-    monto: float
+    monto: Centavos
     metodo: MetodoPago
     nota: str | None
 
@@ -256,10 +258,10 @@ class VentaDetalle(VentaOut):
 class CompraLineaIn(BaseModel):
     producto_id: int
     cantidad: float = Field(gt=0)
-    costo_unit: float = Field(ge=0)
+    costo_unit: Centavos = Field(ge=0)
     iva_pct: float | None = None
     #: Si viene, actualiza el precio de venta del repuesto.
-    precio_venta: float | None = None
+    precio_venta: Centavos | None = None
 
 
 class CompraIn(BaseModel):
@@ -278,9 +280,9 @@ class CompraLineaOut(Base):
     producto_nombre: str | None = None
     sku: str | None = None
     cantidad: float
-    costo_unit: float
+    costo_unit: Centavos
     iva_pct: float
-    subtotal: float
+    subtotal: Centavos
 
 
 class CompraOut(Base):
@@ -289,12 +291,12 @@ class CompraOut(Base):
     fecha: date
     proveedor_id: int | None
     proveedor_nombre: str | None = None
-    subtotal: float
-    iva: float
-    total: float
+    subtotal: Centavos
+    iva: Centavos
+    total: Centavos
     forma_pago: FormaPago
     metodo: MetodoPago | None
-    saldo: float
+    saldo: Centavos
     estado: EstadoDocumento
     nota: str | None
 
@@ -306,7 +308,7 @@ class CompraDetalle(CompraOut):
 # --------------------------------------------------------- gastos y tesoreria
 class GastoIn(BaseModel):
     cuenta_id: int
-    monto: float = Field(gt=0)
+    monto: Centavos = Field(gt=0)
     fecha: date | None = None
     descripcion: str | None = None
     metodo: MetodoGasto = "efectivo"
@@ -320,7 +322,7 @@ class GastoOut(Base):
     cuenta_codigo: str | None = None
     cuenta_nombre: str | None = None
     descripcion: str | None
-    monto: float
+    monto: Centavos
     metodo: MetodoGasto
     proveedor_id: int | None
     proveedor_nombre: str | None = None
@@ -329,7 +331,7 @@ class GastoOut(Base):
 
 class PagoIn(BaseModel):
     clase: Literal["cobro", "pago"]
-    monto: float = Field(gt=0)
+    monto: Centavos = Field(gt=0)
     fecha: date | None = None
     doc_id: int | None = None
     tercero_id: int | None = None
@@ -338,7 +340,7 @@ class PagoIn(BaseModel):
 
 
 class TrasladoIn(BaseModel):
-    monto: float = Field(gt=0)
+    monto: Centavos = Field(gt=0)
     origen: MetodoPago = "efectivo"
     destino: MetodoPago = "banco"
     fecha: date | None = None
@@ -347,8 +349,8 @@ class TrasladoIn(BaseModel):
 
 class AsientoLineaIn(BaseModel):
     cuenta_id: int
-    debe: float = 0
-    haber: float = 0
+    debe: Centavos = 0
+    haber: Centavos = 0
     detalle: str | None = None
 
 
@@ -365,7 +367,7 @@ class OrdenItemIn(BaseModel):
     servicio_id: int | None = None
     descripcion: str | None = None
     cantidad: float = Field(default=1, gt=0)
-    precio_unit: float = Field(default=0, ge=0)
+    precio_unit: Centavos = Field(default=0, ge=0)
     iva_pct: float | None = None
 
 
@@ -388,7 +390,7 @@ class OrdenItemOut(Base):
     servicio_id: int | None
     descripcion: str | None
     cantidad: float
-    precio_unit: float
+    precio_unit: Centavos
     iva_pct: float
     stock: float | None = None
 
@@ -409,7 +411,7 @@ class OrdenOut(Base):
     diagnostico: str | None
     notas: str | None
     venta_id: int | None
-    total: float = 0
+    total: Centavos = 0
 
 
 class OrdenDetalle(OrdenOut):
@@ -431,9 +433,9 @@ class SaldoCuenta(BaseModel):
     nombre: str
     tipo: TipoCuenta
     naturaleza: Naturaleza
-    debe: float
-    haber: float
-    saldo: float
+    debe: Centavos
+    haber: Centavos
+    saldo: Centavos
 
 
 class EstadoResultados(BaseModel):
@@ -442,11 +444,11 @@ class EstadoResultados(BaseModel):
     ingresos: list[SaldoCuenta]
     costos: list[SaldoCuenta]
     gastos: list[SaldoCuenta]
-    total_ingresos: float
-    total_costos: float
-    total_gastos: float
-    utilidad_bruta: float
-    utilidad_neta: float
+    total_ingresos: Centavos
+    total_costos: Centavos
+    total_gastos: Centavos
+    utilidad_bruta: Centavos
+    utilidad_neta: Centavos
     margen_bruto: float
     margen_neto: float
 
@@ -456,24 +458,24 @@ class BalanceGeneral(BaseModel):
     activos: list[SaldoCuenta]
     pasivos: list[SaldoCuenta]
     patrimonio: list[SaldoCuenta]
-    utilidad_ejercicio: float
-    total_activos: float
-    total_pasivos: float
-    total_patrimonio: float
-    diferencia: float
+    utilidad_ejercicio: Centavos
+    total_activos: Centavos
+    total_pasivos: Centavos
+    total_patrimonio: Centavos
+    diferencia: Centavos
 
 
 class PuntoSerie(BaseModel):
     fecha: date
-    ventas: float
-    costo: float
+    ventas: Centavos
+    costo: Centavos
     margen: float
 
 
 class ItemTop(BaseModel):
     nombre: str | None
     cant: float
-    monto: float
+    monto: Centavos
 
 
 class ProductoBajo(BaseModel):
@@ -482,29 +484,29 @@ class ProductoBajo(BaseModel):
     nombre: str
     stock: float
     stock_min: float
-    precio_venta: float
+    precio_venta: Centavos
 
 
 class Dashboard(BaseModel):
     fecha: date
-    ventas_hoy: float
-    ventas_mes: float
+    ventas_hoy: Centavos
+    ventas_mes: Centavos
     num_ventas_mes: int
-    ticket_promedio: float
-    costo_mes: float
-    utilidad_bruta_mes: float
-    utilidad_neta_mes: float
-    gastos_mes: float
+    ticket_promedio: Centavos
+    costo_mes: Centavos
+    utilidad_bruta_mes: Centavos
+    utilidad_neta_mes: Centavos
+    gastos_mes: Centavos
     margen_mes: float
-    utilidad_anio: float
-    ingresos_anio: float
-    caja: float
-    banco: float
-    efectivo_total: float
-    cxc: float
-    cxp: float
-    inventario_valor: float
-    inventario_venta: float
+    utilidad_anio: Centavos
+    ingresos_anio: Centavos
+    caja: Centavos
+    banco: Centavos
+    efectivo_total: Centavos
+    cxc: Centavos
+    cxp: Centavos
+    inventario_valor: Centavos
+    inventario_venta: Centavos
     num_bajo_stock: int
     ordenes_abiertas: int
     bajo_stock: list[ProductoBajo]
@@ -520,39 +522,39 @@ class FilaCartera(BaseModel):
     tercero: str | None
     telefono: str | None
     dias: int
-    total: float
-    saldo: float
+    total: Centavos
+    saldo: Centavos
 
 
 class Cartera(BaseModel):
     por_cobrar: list[FilaCartera]
     por_pagar: list[FilaCartera]
-    total_cobrar: float
-    total_pagar: float
+    total_cobrar: Centavos
+    total_pagar: Centavos
 
 
 class InventarioItem(ProductoOut):
-    valor_costo: float
-    valor_venta: float
-    utilidad_pot: float
+    valor_costo: Centavos
+    valor_venta: Centavos
+    utilidad_pot: Centavos
     margen: float
 
 
 class InventarioValorizado(BaseModel):
     items: list[InventarioItem]
-    total_costo: float
-    total_venta: float
+    total_costo: Centavos
+    total_venta: Centavos
     unidades: float
 
 
 class VentaPeriodo(BaseModel):
     periodo: str
     num: int
-    subtotal: float
-    iva: float
-    total: float
-    costo: float
-    utilidad: float
+    subtotal: Centavos
+    iva: Centavos
+    total: Centavos
+    costo: Centavos
+    utilidad: Centavos
     margen: float
 
 
@@ -560,24 +562,24 @@ class MovimientoCaja(BaseModel):
     fecha: date
     doc_tipo: str
     descripcion: str | None
-    entra: float
-    sale: float
-    saldo: float
+    entra: Centavos
+    sale: Centavos
+    saldo: Centavos
 
 
 class FlujoCaja(BaseModel):
-    saldo_inicial: float
-    saldo_final: float
-    total_entradas: float
-    total_salidas: float
+    saldo_inicial: Centavos
+    saldo_final: Centavos
+    total_entradas: Centavos
+    total_salidas: Centavos
     movimientos: list[MovimientoCaja]
 
 
 class LineaAsientoOut(BaseModel):
     codigo: str
     nombre: str
-    debe: float
-    haber: float
+    debe: Centavos
+    haber: Centavos
     detalle: str | None
 
 
@@ -588,7 +590,7 @@ class AsientoOut(BaseModel):
     doc_id: int | None
     descripcion: str | None
     anulado: int
-    total: float
+    total: Centavos
     lineas: list[LineaAsientoOut]
 
 
@@ -598,36 +600,37 @@ class MovimientoMayor(BaseModel):
     doc_id: int | None
     descripcion: str | None
     detalle: str | None
-    debe: float
-    haber: float
-    saldo: float
+    debe: Centavos
+    haber: Centavos
+    saldo: Centavos
 
 
 class LibroMayor(BaseModel):
     cuenta: CuentaOut
-    saldo_inicial: float
-    saldo_final: float
+    saldo_inicial: Centavos
+    saldo_final: Centavos
     movimientos: list[MovimientoMayor]
 
 
 class BalancePrueba(BaseModel):
     filas: list[SaldoCuenta]
-    total_debe: float
-    total_haber: float
+    total_debe: Centavos
+    total_haber: Centavos
 
 
 class Impuestos(BaseModel):
     desde: date
     hasta: date
-    iva_generado: float
-    iva_descontable: float
-    saldo_a_pagar: float
+    iva_generado: Centavos
+    iva_descontable: Centavos
+    saldo_a_pagar: Centavos
 
 
 class EstadoSistema(BaseModel):
     ventas: int
     productos: int
-    cuadre: float
+    #: Diferencia de la ecuacion contable, en centavos. Debe ser 0.
+    cuadre: Centavos
     version: str
     empresa: str
     servidor: str

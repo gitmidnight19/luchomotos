@@ -12,7 +12,15 @@ import {
   useInventario,
   useKardex,
 } from '../../src/api/hooks';
-import { aNumero, cantidad, dinero, fechaCorta, porcentaje } from '../../src/lib/formato';
+import {
+  aCentavos,
+  aNumero,
+  cantidad,
+  dinero,
+  enPesos,
+  fechaCorta,
+  porcentaje,
+} from '../../src/lib/formato';
 import {
   CampoNumero,
   CampoTexto,
@@ -68,7 +76,7 @@ export default function FichaProducto() {
     setNombre(producto.nombre);
     setSku(producto.sku ?? '');
     setCategoriaId(producto.categoria_id);
-    setPrecio(String(producto.precio_venta));
+    setPrecio(String(enPesos(producto.precio_venta)));
     setMinimo(String(producto.stock_min));
     setUbicacion(producto.ubicacion ?? '');
     setCantidadAjuste(String(producto.stock));
@@ -89,12 +97,12 @@ export default function FichaProducto() {
         nombre: nombre.trim(),
         sku: sku.trim() || null,
         categoria_id: categoriaId,
-        precio_venta: aNumero(precio),
+        precio_venta: aCentavos(precio),
         stock_min: aNumero(minimo),
         ubicacion: ubicacion || null,
         activo: true,
         ...(esNuevo
-          ? { stock_inicial: aNumero(stockInicial), costo_inicial: aNumero(costoInicial) }
+          ? { stock_inicial: aNumero(stockInicial), costo_inicial: aCentavos(costoInicial) }
           : {}),
       };
       const creado = await guardar.mutateAsync({ id: esNuevo ? undefined : productoId, datos });
