@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "taller": {
+      "command": "uv",
+      "args": ["run", "--directory", "backend", "python", "mcp_taller.py"],
+      "env": {}
+    }
+  }
+}

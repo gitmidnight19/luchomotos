@@ -21,10 +21,16 @@ persistir y aborta la transacción completa si no cuadra. `GET /api/estado`
 expone la diferencia `activo − (pasivo + patrimonio)` y las pruebas la afirman
 en cero tras cada recorrido de operaciones.
 
-> **Deuda conocida:** los importes son `float` y esa validación tiene una
-> tolerancia de `0.05`. Con ~200 movimientos pequeños la cuenta de control 1435
-> se desvía del kardex. La corrección es migrar a enteros en centavos y comparar
-> por igualdad exacta. Ver la sección *Pendientes*.
+El invariante es **exacto**: los importes son enteros de centavos, así que no
+hay tolerancia que justificar. `tests/test_propiedades.py` genera secuencias
+aleatorias de operaciones con Hypothesis y verifica seis invariantes después de
+cada paso — entre ellos que el mayor cuadre y que la cuenta de control 1435 ate
+con el auxiliar de inventario.
+
+**El dinero no se guarda en `float` en ninguna parte.** El costo promedio
+tampoco se almacena: se guarda `productos.valor_inventario` en centavos y el
+promedio se deriva al leer. Es lo que impide que la cuenta de control se
+desligue del auxiliar, porque el asiento mueve exactamente el mismo entero.
 
 ## Capas
 
@@ -37,6 +43,34 @@ en cero tras cada recorrido de operaciones.
 
 `errores.ReglaNegocio` / `NoEncontrado` se traducen a 400 / 404 en un manejador
 global de `main.py`; los servicios nunca importan `HTTPException`.
+
+## Servidor MCP
+
+`backend/mcp_taller.py` expone el negocio a un modelo en lenguaje natural:
+*"¿cuánto vendí este mes y qué repuestos debo reponer?"*.
+
+| Herramienta | Responde |
+|---|---|
+| `resumen_periodo` | ventas, costo, gastos, utilidad y margen del periodo |
+| `repuestos_por_reponer` | qué está bajo el mínimo, con días de cobertura |
+| `rentabilidad_por_producto` | cuáles dejan utilidad de verdad |
+| `cartera_vencida` | quién debe, desde hace cuánto |
+| `estado_financiero` | efectivo, inventario, cartera, patrimonio y cuadre |
+
+Dos decisiones deliberadas:
+
+- **Escritas a mano, no generadas del OpenAPI.** `FastMCP.from_fastapi()` habría
+  producido ~40 herramientas CRUD, y la documentación de FastMCP advierte que los
+  modelos rinden peor con APIs auto-convertidas que con servidores diseñados.
+- **Solo lectura.** Un modelo no debe poder anular una factura. La superficie de
+  escritura sigue siendo la app.
+
+Corre en proceso contra la capa de servicios, sin HTTP ni autenticación de por
+medio. Está registrado en `.mcp.json`; para inspeccionarlo:
+
+```bash
+uv run --directory backend fastmcp dev mcp_taller.py
+```
 
 ## Contrato tipado
 
@@ -109,20 +143,32 @@ cambiarla hay que reiniciar con `expo start -c`.
 
 ## Pendientes (por prioridad)
 
-1. **Dinero en enteros de centavos.** Elimina el `r2()` disperso y convierte la
-   tolerancia de `0.05` en igualdad exacta.
-2. **Invariante de existencias en la escritura.** Hoy `validar_existencias` lee
-   y `mover` escribe: es check-then-act. Debe ser
-   `UPDATE ... WHERE stock >= :n` + `CHECK (stock >= 0)`.
-3. **Numeración de documentos.** Hoy deriva del PK (`f"{prefijo}{id:05d}"`):
-   filtra ids internos y no admite series. Necesita tabla de secuencias con
-   incremento atómico.
-4. **`ventas.saldo` / `compras.saldo` denormalizados** frente a la tabla `pagos`.
-5. **Paginación** en los listados (`ordenes` tiene un `LIMIT 300` hardcodeado).
-6. **Invalidación de caché granular** en `movil/src/api/hooks.ts`: hoy
+La app debe **seguir vendiendo sin red**, y eso reordena lo que falta. Tres
+cimientos del código actual no lo soportan:
+
+1. **ULID como clave.** 18 tablas usan PK entera autoincremental: el teléfono no
+   puede generar identificadores sin hablar con el servidor.
+2. **Series de numeración por dispositivo** (`FV-A-00001`). Hoy el número deriva
+   del PK del servidor, así que no existe hasta sincronizar.
+3. **Log de operaciones** y endpoint de sincronización idempotente. Encaja
+   natural con contabilidad: los documentos ya son inmutables — una anulación es
+   un documento nuevo, nunca un `UPDATE`.
+4. **`expo-sqlite`** con cola local en el móvil.
+5. **Política de conflicto de existencias**: aceptar y señalar, no rechazar. Si
+   dos dispositivos venden la última unidad estando offline, el repuesto ya
+   salió; negarlo al sincronizar sería negar un hecho.
+
+Y lo que sigue pendiente al margen de eso:
+
+6. **Invariante de existencias en la escritura.** `validar_existencias` lee y
+   `mover` escribe: es check-then-act. Debe ser `UPDATE ... WHERE stock >= :n`
+   más `CHECK (stock >= 0)`.
+7. **`ventas.saldo` / `compras.saldo` denormalizados** frente a la tabla `pagos`.
+8. **Paginación** en los listados (`ordenes` tiene un `LIMIT 300` hardcodeado).
+9. **Invalidación de caché granular** en `movil/src/api/hooks.ts`: hoy
    `useMutacionContable` invalida 19 grupos por mutación.
-7. **Sin autenticación.** Cualquiera en la red tiene lectura y escritura totales,
-   incluido `DELETE /api/demo`.
+10. **Sin autenticación.** Cualquiera en la red tiene lectura y escritura
+    totales, incluido `DELETE /api/demo`.
 
 ## Estructura
 
@@ -136,7 +182,7 @@ cambiarla hay que reiniciar con `expo start -c`.
 ├── backend/
 │   ├── pyproject.toml        dependencias y config de herramientas
 │   ├── alembic/              migraciones
-│   ├── tests/                62 pruebas · 98% de cobertura
+│   ├── tests/                65 pruebas + propiedades con Hypothesis
 │   └── app/
 │       ├── main.py config.py database.py errores.py
 │       ├── models.py schemas.py seed.py demo.py deps.py
