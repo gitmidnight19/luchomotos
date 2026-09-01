@@ -44,6 +44,19 @@ desligue del auxiliar, porque el asiento mueve exactamente el mismo entero.
 `errores.ReglaNegocio` / `NoEncontrado` se traducen a 400 / 404 en un manejador
 global de `main.py`; los servicios nunca importan `HTTPException`.
 
+## Sistema de diseño
+
+El canon visual está en [`DESIGN/`](./DESIGN), en dos capas autocontenidas:
+
+| Capa | Archivo | Qué manda |
+|---|---|---|
+| 1 · Fundamentos | [`00-fundamentos.md`](./DESIGN/00-fundamentos.md) | Marca, tipografía, movimiento, voz, reglas de dato. Sin plataforma. |
+| 2 · App móvil | [`20-mobile.md`](./DESIGN/20-mobile.md) | Tema claro/oscuro, forma, dock, esqueletos, pantallas. |
+
+La identidad es **Taller Motos Lucho**: rojo `#B11212`, negro `#0B0B0B` y azul
+`#2A78D6` como acento secundario. Los valores viven una sola vez, en
+`movil/src/ui/tema.ts`; ninguna pantalla escribe un hex.
+
 ## Servidor MCP
 
 `backend/mcp_taller.py` expone el negocio a un modelo en lenguaje natural:
@@ -189,10 +202,14 @@ Y lo que sigue pendiente al margen de eso:
 │       ├── services/         contabilidad · inventario · ventas · compras
 │       │                     ordenes · tesoreria · informes
 │       └── routers/          sistema · catalogos · operaciones · informes
+├── DESIGN/                   sistema de diseño (canon visual, 2 capas)
 └── movil/
-    ├── AGENTS.md             por qué el SDK está fijado en 54
+    ├── AGENTS.md             SDK fijado en 54 · las 3 reglas del canon
     ├── app/                  rutas (expo-router)
-    └── src/{api,ui,lib}/     contrato, componentes, formato
+    └── src/
+        ├── api/              contrato tipado y hooks
+        ├── lib/              formato de dinero y fechas
+        └── ui/               tema · componentes · dock · esqueletos · marca
 ```
 
 ## Ganchos de pre-commit

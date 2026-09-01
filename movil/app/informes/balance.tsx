@@ -14,13 +14,24 @@ import {
   Rejilla,
   Tarjeta,
 } from '../../src/ui/componentes';
-import { colores } from '../../src/ui/tema';
+import { useTema } from '../../src/ui/temaProveedor';
 
 export default function Balance() {
+  const { c } = useTema();
   const { data, isLoading, isRefetching, error, refetch } = useBalance(hoy());
 
-  if (error) return <AvisoError mensaje={(error as Error).message} onReintentar={refetch} />;
-  if (isLoading || !data) return <Cargando />;
+  if (error)
+    return (
+      <Pantalla titulo="Balance general" atras>
+        <AvisoError mensaje={(error as Error).message} onReintentar={refetch} />
+      </Pantalla>
+    );
+  if (isLoading || !data)
+    return (
+      <Pantalla titulo="Balance general" atras>
+        <Cargando preset="informe" />
+      </Pantalla>
+    );
 
   const grupo = (
     titulo: string,
@@ -38,7 +49,7 @@ export default function Balance() {
           flexDirection: 'row',
           justifyContent: 'space-between',
           padding: 14,
-          backgroundColor: '#fafbfd',
+          backgroundColor: c.campo,
         }}
       >
         <Text style={{ fontWeight: '700' }}>TOTAL</Text>
@@ -50,10 +61,14 @@ export default function Balance() {
   const cuadra = Math.abs(data.diferencia) < 0.05;
 
   return (
-    <Pantalla cargando={isRefetching} onRefrescar={refetch}>
-      <Text style={{ color: colores.suave, marginBottom: 10 }}>
-        Corte al {fechaLarga(data.hasta)}
-      </Text>
+    <Pantalla
+      titulo="Balance general"
+      subtitulo="Activos, pasivos y patrimonio"
+      atras
+      cargando={isRefetching}
+      onRefrescar={refetch}
+    >
+      <Text style={{ color: c.suave, marginBottom: 10 }}>Corte al {fechaLarga(data.hasta)}</Text>
 
       <Rejilla>
         <Kpi etiqueta="Activos" valor={dineroCorto(data.total_activos)} tono="marca" />

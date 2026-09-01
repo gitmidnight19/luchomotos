@@ -1,7 +1,7 @@
 /** Gastos del taller: arriendo, servicios, nomina, insumos. */
 import { useMemo, useState } from 'react';
 import { Alert, View } from 'react-native';
-import { Button, Dialog, FAB, Portal, Text } from 'react-native-paper';
+import { Button, Dialog, Portal, Text } from 'react-native-paper';
 
 import {
   useAnularGasto,
@@ -27,9 +27,10 @@ import {
   Vacio,
 } from '../src/ui/componentes';
 import { usePeriodo } from '../src/ui/periodo';
-import { colores } from '../src/ui/tema';
+import { useTema } from '../src/ui/temaProveedor';
 
 export default function Gastos() {
+  const { c } = useTema();
   const { desde, hasta, control } = usePeriodo('mes');
   const { data = [], isLoading, isRefetching, error, refetch } = useGastos(desde, hasta);
   const { data: cuentas = [] } = useCuentas();
@@ -97,84 +98,78 @@ export default function Gastos() {
   }
 
   return (
-    <View style={{ flex: 1 }}>
-      <Pantalla cargando={isRefetching} onRefrescar={refetch}>
-        {control}
-        <Rejilla>
-          <Kpi etiqueta="Gastos del periodo" valor={dineroCorto(total)} tono="marca" />
-          <Kpi etiqueta="Registros" valor={String(activos.length)} />
-        </Rejilla>
+    <Pantalla
+      titulo="Gastos"
+      subtitulo="Arriendo, servicios, nomina"
+      atras
+      cargando={isRefetching}
+      onRefrescar={refetch}
+      accion={{ rotulo: 'Gasto', onPress: () => setNuevo(true) }}
+    >
+      {control}
+      <Rejilla>
+        <Kpi etiqueta="Gastos del periodo" valor={dineroCorto(total)} tono="marca" />
+        <Kpi etiqueta="Registros" valor={String(activos.length)} />
+      </Rejilla>
 
-        {error ? (
-          <AvisoError mensaje={(error as Error).message} onReintentar={refetch} />
-        ) : isLoading ? (
-          <Cargando />
-        ) : (
-          <>
-            <Tarjeta titulo="Resumen por concepto">
-              {porConcepto.length === 0 ? (
-                <Vacio titulo="Sin gastos" />
-              ) : (
-                porConcepto.map(([nombre, valor]) => (
-                  <Fila
-                    key={nombre}
-                    titulo={nombre}
-                    subtitulo={porcentaje(total ? (valor / total) * 100 : 0)}
-                    valor={dinero(valor)}
-                  />
-                ))
-              )}
-            </Tarjeta>
-
-            <Tarjeta titulo="Movimientos">
-              {data.length === 0 ? (
-                <Vacio
-                  titulo="Sin gastos"
-                  texto="Registre el arriendo, los servicios y la nomina."
+      {error ? (
+        <AvisoError mensaje={(error as Error).message} onReintentar={refetch} />
+      ) : isLoading ? (
+        <Cargando />
+      ) : (
+        <>
+          <Tarjeta titulo="Resumen por concepto">
+            {porConcepto.length === 0 ? (
+              <Vacio titulo="Sin gastos" />
+            ) : (
+              porConcepto.map(([nombre, valor]) => (
+                <Fila
+                  key={nombre}
+                  titulo={nombre}
+                  subtitulo={porcentaje(total ? (valor / total) * 100 : 0)}
+                  valor={dinero(valor)}
                 />
-              ) : (
-                data.map((g) => (
-                  <Fila
-                    key={g.id}
-                    titulo={g.descripcion || g.cuenta_nombre || 'Gasto'}
-                    subtitulo={`${g.cuenta_codigo ?? ''} · ${g.metodo}`}
-                    detalle={fechaCorta(g.fecha)}
-                    onPress={g.estado === 'activo' ? () => confirmarAnular(g.id) : undefined}
-                    derecha={
-                      <Text
-                        style={{
-                          fontWeight: '700',
-                          color: g.estado === 'anulado' ? colores.suave : colores.texto,
-                          textDecorationLine: g.estado === 'anulado' ? 'line-through' : 'none',
-                        }}
-                      >
-                        {dinero(g.monto)}
-                      </Text>
-                    }
-                  />
-                ))
-              )}
-            </Tarjeta>
-          </>
-        )}
-      </Pantalla>
+              ))
+            )}
+          </Tarjeta>
 
-      <FAB
-        icon="plus"
-        label="Gasto"
-        onPress={() => setNuevo(true)}
-        style={{ position: 'absolute', right: 16, bottom: 20 }}
-      />
-
+          <Tarjeta titulo="Movimientos">
+            {data.length === 0 ? (
+              <Vacio titulo="Sin gastos" texto="Registre el arriendo, los servicios y la nomina." />
+            ) : (
+              data.map((g) => (
+                <Fila
+                  key={g.id}
+                  titulo={g.descripcion || g.cuenta_nombre || 'Gasto'}
+                  subtitulo={`${g.cuenta_codigo ?? ''} · ${g.metodo}`}
+                  detalle={fechaCorta(g.fecha)}
+                  onPress={g.estado === 'activo' ? () => confirmarAnular(g.id) : undefined}
+                  derecha={
+                    <Text
+                      style={{
+                        fontWeight: '700',
+                        color: g.estado === 'anulado' ? c.suave : c.texto,
+                        textDecorationLine: g.estado === 'anulado' ? 'line-through' : 'none',
+                      }}
+                    >
+                      {dinero(g.monto)}
+                    </Text>
+                  }
+                />
+              ))
+            )}
+          </Tarjeta>
+        </>
+      )}
       <Portal>
         <Dialog
           visible={nuevo}
           onDismiss={() => setNuevo(false)}
-          style={{ backgroundColor: '#fff' }}
+          style={{ backgroundColor: c.superficie }}
         >
           <Dialog.Title>Registrar gasto</Dialog.Title>
           <Dialog.ScrollArea>
-            <Pantalla sinPadding>
+            <Pantalla incrustada>
               <View style={{ padding: 14 }}>
                 <CampoNumero label="Monto" value={monto} onChangeText={setMonto} />
                 <Selector
@@ -222,6 +217,6 @@ export default function Gastos() {
           </Dialog.Actions>
         </Dialog>
       </Portal>
-    </View>
+    </Pantalla>
   );
 }

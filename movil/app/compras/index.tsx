@@ -2,7 +2,7 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert, View } from 'react-native';
-import { Button, Dialog, FAB, Portal, Text } from 'react-native-paper';
+import { Button, Dialog, Portal, Text } from 'react-native-paper';
 
 import { useAnularCompra, useCompra, useCompras, useRegistrarPago } from '../../src/api/hooks';
 import type { MetodoPago } from '../../src/api/tipos';
@@ -27,9 +27,10 @@ import {
   Vacio,
 } from '../../src/ui/componentes';
 import { usePeriodo } from '../../src/ui/periodo';
-import { colores } from '../../src/ui/tema';
+import { useTema } from '../../src/ui/temaProveedor';
 
 export default function Compras() {
+  const { c } = useTema();
   const { desde, hasta, control } = usePeriodo('mes');
   const { data = [], isLoading, isRefetching, error, refetch } = useCompras(desde, hasta);
   const [verId, setVerId] = useState<number | null>(null);
@@ -75,62 +76,59 @@ export default function Compras() {
   }
 
   return (
-    <View style={{ flex: 1 }}>
-      <Pantalla cargando={isRefetching} onRefrescar={refetch}>
-        {control}
-        <Tarjeta titulo={`${data.length} compras · ${dineroCorto(total)}`}>
-          {error ? (
-            <AvisoError mensaje={(error as Error).message} onReintentar={refetch} />
-          ) : isLoading ? (
-            <Cargando />
-          ) : data.length === 0 ? (
-            <Vacio titulo="Sin compras" texto="Registre las facturas de sus proveedores." />
-          ) : (
-            data.map((c) => (
-              <Fila
-                key={c.id}
-                titulo={`${c.numero ?? ''} · ${c.proveedor_nombre ?? 'Sin proveedor'}`}
-                subtitulo={fechaCorta(c.fecha)}
-                onPress={() => setVerId(c.id)}
-                derecha={
-                  <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                    <Text style={{ fontWeight: '700' }}>{dinero(c.total)}</Text>
-                    {c.estado === 'anulada' ? (
-                      <Etiqueta texto="anulada" tono="mal" />
-                    ) : c.saldo > 0 ? (
-                      <Etiqueta texto={`debe ${dineroCorto(c.saldo)}`} tono="alerta" />
-                    ) : (
-                      <Etiqueta texto="pagada" tono="ok" />
-                    )}
-                  </View>
-                }
-              />
-            ))
-          )}
-        </Tarjeta>
-      </Pantalla>
-
-      <FAB
-        icon="plus"
-        label="Compra"
-        onPress={() => router.push('/compras/nueva')}
-        style={{ position: 'absolute', right: 16, bottom: 20 }}
-      />
-
+    <Pantalla
+      titulo="Compras"
+      subtitulo="Facturas de proveedores"
+      atras
+      cargando={isRefetching}
+      onRefrescar={refetch}
+      accion={{ rotulo: 'Compra', onPress: () => router.push('/compras/nueva') }}
+    >
+      {control}
+      <Tarjeta titulo={`${data.length} compras · ${dineroCorto(total)}`}>
+        {error ? (
+          <AvisoError mensaje={(error as Error).message} onReintentar={refetch} />
+        ) : isLoading ? (
+          <Cargando />
+        ) : data.length === 0 ? (
+          <Vacio titulo="Sin compras" texto="Registre las facturas de sus proveedores." />
+        ) : (
+          data.map((c) => (
+            <Fila
+              key={c.id}
+              titulo={`${c.numero ?? ''} · ${c.proveedor_nombre ?? 'Sin proveedor'}`}
+              subtitulo={fechaCorta(c.fecha)}
+              onPress={() => setVerId(c.id)}
+              derecha={
+                <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                  <Text style={{ fontWeight: '700' }}>{dinero(c.total)}</Text>
+                  {c.estado === 'anulada' ? (
+                    <Etiqueta texto="anulada" tono="mal" />
+                  ) : c.saldo > 0 ? (
+                    <Etiqueta texto={`debe ${dineroCorto(c.saldo)}`} tono="alerta" />
+                  ) : (
+                    <Etiqueta texto="pagada" tono="ok" />
+                  )}
+                </View>
+              }
+            />
+          ))
+        )}
+      </Tarjeta>
       <Portal>
         <Dialog
           visible={!!verId}
           onDismiss={() => setVerId(null)}
-          style={{ backgroundColor: '#fff', maxHeight: '85%' }}
+          style={{ backgroundColor: c.superficie, maxHeight: '85%' }}
         >
           <Dialog.Title>{detalle?.numero ?? 'Compra'}</Dialog.Title>
           <Dialog.ScrollArea>
-            <Pantalla sinPadding>
+            <Pantalla incrustada>
               {!detalle ? (
                 <Cargando />
               ) : (
                 <>
-                  <Text style={{ padding: 12, color: colores.suave }}>
+                  <Text style={{ padding: 12, color: c.suave }}>
                     {detalle.proveedor_nombre ?? 'Sin proveedor'} · {fechaCorta(detalle.fecha)} ·{' '}
                     {detalle.forma_pago}
                   </Text>
@@ -166,7 +164,7 @@ export default function Compras() {
               </Button>
             )}
             {!!detalle && detalle.estado === 'activa' && (
-              <Button textColor={colores.error} onPress={() => confirmarAnular(detalle.id)}>
+              <Button textColor={c.peligro} onPress={() => confirmarAnular(detalle.id)}>
                 Anular
               </Button>
             )}
@@ -177,7 +175,7 @@ export default function Compras() {
         <Dialog
           visible={!!pagarId}
           onDismiss={() => setPagarId(null)}
-          style={{ backgroundColor: '#fff' }}
+          style={{ backgroundColor: c.superficie }}
         >
           <Dialog.Title>Pagar al proveedor</Dialog.Title>
           <Dialog.Content>
@@ -200,6 +198,6 @@ export default function Compras() {
           </Dialog.Actions>
         </Dialog>
       </Portal>
-    </View>
+    </Pantalla>
   );
 }

@@ -1,9 +1,10 @@
-/** Barra inferior con lo que se usa a diario en el taller. */
+/** Dock flotante con lo que se usa a diario en el taller. */
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import type { ColorValue } from 'react-native';
 
-import { colores } from '../../src/ui/tema';
+import { Dock } from '../../src/ui/dock';
+import { useTema } from '../../src/ui/temaProveedor';
 
 type Icono = keyof typeof MaterialCommunityIcons.glyphMap;
 
@@ -16,16 +17,16 @@ function icono(nombre: Icono) {
 }
 
 export default function Pestanas() {
+  const { c } = useTema();
+
   return (
     <Tabs
+      tabBar={(props) => <Dock {...props} />}
       screenOptions={{
-        headerStyle: { backgroundColor: colores.marca },
-        headerTintColor: '#fff',
-        headerTitleStyle: { fontWeight: '700', fontSize: 17 },
-        tabBarActiveTintColor: colores.marca,
-        tabBarInactiveTintColor: colores.suave,
-        tabBarStyle: { borderTopColor: colores.linea, height: 60, paddingBottom: 6, paddingTop: 4 },
-        tabBarLabelStyle: { fontSize: 11.5, fontWeight: '600' },
+        // Sin barra superior: cada pantalla titula en su lienzo y el dock dice
+        // en que seccion se esta (DESIGN/20-mobile.md §3).
+        headerShown: false,
+        sceneStyle: { backgroundColor: c.fondo },
       }}
     >
       <Tabs.Screen

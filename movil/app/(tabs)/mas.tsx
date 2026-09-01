@@ -7,7 +7,8 @@ import { Text } from 'react-native-paper';
 import { useEstado } from '../../src/api/hooks';
 import { dinero } from '../../src/lib/formato';
 import { Etiqueta, Fila, Pantalla, Tarjeta } from '../../src/ui/componentes';
-import { colores } from '../../src/ui/tema';
+import { Logo } from '../../src/ui/marca';
+import { useTema } from '../../src/ui/temaProveedor';
 
 type Entrada = { titulo: string; detalle: string; icono: string; ruta: string };
 
@@ -82,6 +83,7 @@ const CONTABILIDAD: Entrada[] = [
 ];
 
 export default function Mas() {
+  const { c } = useTema();
   const router = useRouter();
   const { data: estado, refetch, isRefetching } = useEstado();
 
@@ -93,33 +95,36 @@ export default function Mas() {
           titulo={x.titulo}
           subtitulo={x.detalle}
           onPress={() => router.push(x.ruta)}
-          derecha={<MaterialCommunityIcons name="chevron-right" size={22} color={colores.suave} />}
+          derecha={<MaterialCommunityIcons name="chevron-right" size={22} color={c.suave} />}
         />
       ))}
     </Tarjeta>
   );
 
   return (
-    <Pantalla cargando={isRefetching} onRefrescar={refetch}>
+    <Pantalla dock cargando={isRefetching} onRefrescar={refetch}>
       {!!estado && (
         <Tarjeta>
-          <View style={{ padding: 16 }}>
-            <Text variant="titleMedium" style={{ fontWeight: '700' }}>
-              {estado.empresa}
-            </Text>
-            <Text style={{ color: colores.suave, marginTop: 2 }}>
-              {estado.ventas} facturas · {estado.productos} repuestos
-            </Text>
-            <View style={{ flexDirection: 'row', gap: 8, marginTop: 10, alignItems: 'center' }}>
-              <Etiqueta
-                texto={
-                  Math.abs(estado.cuadre) < 0.05
-                    ? 'contabilidad cuadrada'
-                    : `descuadre ${dinero(estado.cuadre)}`
-                }
-                tono={Math.abs(estado.cuadre) < 0.05 ? 'ok' : 'mal'}
-              />
-              <Etiqueta texto={`v${estado.version}`} tono="gris" />
+          <View style={{ padding: 16, flexDirection: 'row', gap: 14, alignItems: 'center' }}>
+            <Logo ancho={56} />
+            <View style={{ flex: 1 }}>
+              <Text variant="titleMedium" style={{ fontWeight: '700' }}>
+                {estado.empresa}
+              </Text>
+              <Text style={{ color: c.suave, marginTop: 2 }}>
+                {estado.ventas} facturas · {estado.productos} repuestos
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 10, alignItems: 'center' }}>
+                <Etiqueta
+                  texto={
+                    Math.abs(estado.cuadre) < 0.05
+                      ? 'contabilidad cuadrada'
+                      : `descuadre ${dinero(estado.cuadre)}`
+                  }
+                  tono={Math.abs(estado.cuadre) < 0.05 ? 'ok' : 'mal'}
+                />
+                <Etiqueta texto={`v${estado.version}`} tono="gris" />
+              </View>
             </View>
           </View>
         </Tarjeta>
@@ -132,9 +137,9 @@ export default function Mas() {
       <Tarjeta titulo="Sistema">
         <Fila
           titulo="Configuracion"
-          subtitulo="Datos del taller, IVA, servidor y respaldo"
+          subtitulo="Apariencia, datos del taller, IVA y servidor"
           onPress={() => router.push('/config')}
-          derecha={<MaterialCommunityIcons name="chevron-right" size={22} color={colores.suave} />}
+          derecha={<MaterialCommunityIcons name="chevron-right" size={22} color={c.suave} />}
         />
       </Tarjeta>
     </Pantalla>

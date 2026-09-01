@@ -1,7 +1,7 @@
 /** Directorio de clientes y proveedores con sus saldos. */
 import { useMemo, useState } from 'react';
 import { Alert, View } from 'react-native';
-import { Button, Dialog, FAB, Portal, Searchbar } from 'react-native-paper';
+import { Button, Dialog, Portal, Searchbar } from 'react-native-paper';
 
 import { useBorrarTercero, useGuardarTercero, useTerceros } from '../src/api/hooks';
 import type { Tercero, TipoTercero } from '../src/api/tipos';
@@ -16,7 +16,7 @@ import {
   Tarjeta,
   Vacio,
 } from '../src/ui/componentes';
-import { colores } from '../src/ui/tema';
+import { useTema } from '../src/ui/temaProveedor';
 
 const VACIO = {
   nombre: '',
@@ -29,6 +29,7 @@ const VACIO = {
 };
 
 export default function Clientes() {
+  const { c } = useTema();
   const { data = [], isLoading, isRefetching, refetch } = useTerceros();
   const guardar = useGuardarTercero();
   const borrar = useBorrarTercero();
@@ -93,70 +94,68 @@ export default function Clientes() {
     ]);
   }
 
-  if (isLoading) return <Cargando />;
+  if (isLoading)
+    return (
+      <Pantalla titulo="Clientes y proveedores" atras>
+        <Cargando />
+      </Pantalla>
+    );
 
   return (
-    <View style={{ flex: 1 }}>
-      <Pantalla cargando={isRefetching} onRefrescar={refetch}>
-        <Searchbar
-          placeholder="Buscar por nombre, documento o telefono…"
-          value={busqueda}
-          onChangeText={setBusqueda}
-          style={{ marginBottom: 12, backgroundColor: '#fff', borderRadius: 12 }}
-        />
-        <Opciones
-          valor={filtro}
-          onCambio={setFiltro}
-          opciones={[
-            { valor: 'todos', texto: 'Todos' },
-            { valor: 'cliente', texto: 'Clientes' },
-            { valor: 'proveedor', texto: 'Proveedores' },
-          ]}
-        />
-
-        <Tarjeta titulo={`${lista.length} registros`}>
-          {lista.length === 0 ? (
-            <Vacio titulo="Sin registros" texto="Agregue sus clientes y proveedores." />
-          ) : (
-            lista.map((t) => (
-              <Fila
-                key={t.id}
-                titulo={t.nombre}
-                subtitulo={[t.documento, t.telefono].filter(Boolean).join(' · ') || undefined}
-                onPress={() => abrir(t)}
-                derecha={
-                  <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                    <Etiqueta texto={t.tipo} tono="info" />
-                    {t.deuda > 0 && (
-                      <Etiqueta texto={`nos debe ${dinero(t.deuda)}`} tono="alerta" />
-                    )}
-                    {t.pordar > 0 && (
-                      <Etiqueta texto={`le debemos ${dinero(t.pordar)}`} tono="mal" />
-                    )}
-                  </View>
-                }
-              />
-            ))
-          )}
-        </Tarjeta>
-      </Pantalla>
-
-      <FAB
-        icon="plus"
-        label="Nuevo"
-        onPress={() => abrir()}
-        style={{ position: 'absolute', right: 16, bottom: 20 }}
+    <Pantalla
+      titulo="Clientes y proveedores"
+      subtitulo="Directorio con saldos"
+      atras
+      cargando={isRefetching}
+      onRefrescar={refetch}
+      accion={{ rotulo: 'Nuevo', onPress: () => abrir() }}
+    >
+      <Searchbar
+        placeholder="Buscar por nombre, documento o telefono…"
+        value={busqueda}
+        onChangeText={setBusqueda}
+        style={{ marginBottom: 12, backgroundColor: c.superficie, borderRadius: 12 }}
+      />
+      <Opciones
+        valor={filtro}
+        onCambio={setFiltro}
+        opciones={[
+          { valor: 'todos', texto: 'Todos' },
+          { valor: 'cliente', texto: 'Clientes' },
+          { valor: 'proveedor', texto: 'Proveedores' },
+        ]}
       />
 
+      <Tarjeta titulo={`${lista.length} registros`}>
+        {lista.length === 0 ? (
+          <Vacio titulo="Sin registros" texto="Agregue sus clientes y proveedores." />
+        ) : (
+          lista.map((t) => (
+            <Fila
+              key={t.id}
+              titulo={t.nombre}
+              subtitulo={[t.documento, t.telefono].filter(Boolean).join(' · ') || undefined}
+              onPress={() => abrir(t)}
+              derecha={
+                <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                  <Etiqueta texto={t.tipo} tono="info" />
+                  {t.deuda > 0 && <Etiqueta texto={`nos debe ${dinero(t.deuda)}`} tono="alerta" />}
+                  {t.pordar > 0 && <Etiqueta texto={`le debemos ${dinero(t.pordar)}`} tono="mal" />}
+                </View>
+              }
+            />
+          ))
+        )}
+      </Tarjeta>
       <Portal>
         <Dialog
           visible={!!editando}
           onDismiss={() => setEditando(null)}
-          style={{ backgroundColor: '#fff', maxHeight: '85%' }}
+          style={{ backgroundColor: c.superficie, maxHeight: '85%' }}
         >
           <Dialog.Title>{editando?.id ? 'Editar' : 'Nuevo registro'}</Dialog.Title>
           <Dialog.ScrollArea>
-            <Pantalla sinPadding>
+            <Pantalla incrustada>
               {!!editando && (
                 <View style={{ padding: 14 }}>
                   <CampoTexto
@@ -199,7 +198,7 @@ export default function Clientes() {
                   />
                   {!!editando.id && (
                     <Button
-                      textColor={colores.error}
+                      textColor={c.peligro}
                       onPress={() => confirmarBorrar(editando.id!)}
                       style={{ marginTop: 4 }}
                     >
@@ -218,6 +217,6 @@ export default function Clientes() {
           </Dialog.Actions>
         </Dialog>
       </Portal>
-    </View>
+    </Pantalla>
   );
 }

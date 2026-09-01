@@ -6,20 +6,37 @@ import { useDiario } from '../../src/api/hooks';
 import { dinero, fechaCorta } from '../../src/lib/formato';
 import { AvisoError, Cargando, Etiqueta, Pantalla, Tarjeta, Vacio } from '../../src/ui/componentes';
 import { usePeriodo } from '../../src/ui/periodo';
-import { colores } from '../../src/ui/tema';
+import { useTema } from '../../src/ui/temaProveedor';
 
 export default function Diario() {
+  const { c } = useTema();
   const { desde, hasta, control } = usePeriodo('mes');
   const { data = [], isLoading, isRefetching, error, refetch } = useDiario(desde, hasta);
 
-  if (error) return <AvisoError mensaje={(error as Error).message} onReintentar={refetch} />;
-  if (isLoading) return <Cargando />;
+  if (error)
+    return (
+      <Pantalla titulo="Libro diario" atras>
+        <AvisoError mensaje={(error as Error).message} onReintentar={refetch} />
+      </Pantalla>
+    );
+  if (isLoading)
+    return (
+      <Pantalla titulo="Libro diario" atras>
+        <Cargando preset="informe" />
+      </Pantalla>
+    );
 
   return (
-    <Pantalla cargando={isRefetching} onRefrescar={refetch}>
+    <Pantalla
+      titulo="Libro diario"
+      subtitulo="Todos los asientos contables"
+      atras
+      cargando={isRefetching}
+      onRefrescar={refetch}
+    >
       {control}
 
-      <Text style={{ color: colores.suave, marginBottom: 10 }}>
+      <Text style={{ color: c.suave, marginBottom: 10 }}>
         {data.length} asientos. Todos se generaron solos a partir de las ventas, compras, gastos y
         pagos.
       </Text>
@@ -37,7 +54,7 @@ export default function Diario() {
                 alignItems: 'center',
                 padding: 12,
                 borderBottomWidth: 1,
-                borderBottomColor: colores.linea,
+                borderBottomColor: c.linea,
                 gap: 8,
               }}
             >
@@ -45,7 +62,7 @@ export default function Diario() {
                 <Text style={{ fontWeight: '700' }} numberOfLines={2}>
                   {a.descripcion ?? a.doc_tipo}
                 </Text>
-                <Text style={{ color: colores.suave, fontSize: 12.5 }}>
+                <Text style={{ color: c.suave, fontSize: 12.5 }}>
                   #{a.id} · {fechaCorta(a.fecha)}
                 </Text>
               </View>
@@ -67,7 +84,7 @@ export default function Diario() {
                     {l.codigo} · {l.nombre}
                   </Text>
                   {!!l.detalle && (
-                    <Text style={{ fontSize: 11.5, color: colores.suave }} numberOfLines={1}>
+                    <Text style={{ fontSize: 11.5, color: c.suave }} numberOfLines={1}>
                       {l.detalle}
                     </Text>
                   )}
@@ -85,9 +102,9 @@ export default function Diario() {
               style={{
                 flexDirection: 'row',
                 padding: 12,
-                backgroundColor: '#fafbfd',
+                backgroundColor: c.campo,
                 borderTopWidth: 1,
-                borderTopColor: colores.linea,
+                borderTopColor: c.linea,
               }}
             >
               <Text style={{ flex: 1, fontWeight: '700', fontSize: 12.5 }}>Sumas iguales</Text>

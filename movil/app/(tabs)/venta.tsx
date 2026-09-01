@@ -1,5 +1,4 @@
 /** Mostrador: arma la factura buscando repuestos y servicios. */
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Alert, TouchableOpacity, View } from 'react-native';
@@ -15,6 +14,7 @@ import {
 import type { FormaPago, MetodoPago } from '../../src/api/tipos';
 import { aCentavos, aNumero, dinero, enPesos, multiplicar, tasa } from '../../src/lib/formato';
 import {
+  Boton,
   CampoNumero,
   CampoTexto,
   Fila,
@@ -25,7 +25,7 @@ import {
   TotalesCaja,
   Vacio,
 } from '../../src/ui/componentes';
-import { colores } from '../../src/ui/tema';
+import { useTema } from '../../src/ui/temaProveedor';
 
 type Linea = {
   clave: string;
@@ -41,6 +41,7 @@ type Linea = {
 };
 
 export default function PuntoDeVenta() {
+  const { c } = useTema();
   const [busqueda, setBusqueda] = useState('');
   const [lineas, setLineas] = useState<Linea[]>([]);
   const [clienteId, setClienteId] = useState<number | null>(null);
@@ -179,12 +180,12 @@ export default function PuntoDeVenta() {
   const excedeStock = lineas.some((l) => l.stock !== undefined && l.cantidad > l.stock);
 
   return (
-    <Pantalla>
+    <Pantalla dock>
       <Searchbar
         placeholder="Buscar repuesto o servicio…"
         value={busqueda}
         onChangeText={setBusqueda}
-        style={{ marginBottom: 12, backgroundColor: '#fff', borderRadius: 12 }}
+        style={{ marginBottom: 12, backgroundColor: c.superficie, borderRadius: 12 }}
         inputStyle={{ fontSize: 15 }}
       />
 
@@ -229,12 +230,12 @@ export default function PuntoDeVenta() {
                     {l.tipo === 'producto' ? '🔩 ' : '⚙ '}
                     {l.descripcion}
                   </Text>
-                  <Text style={{ color: colores.suave, fontSize: 12.5, marginTop: 2 }}>
+                  <Text style={{ color: c.suave, fontSize: 12.5, marginTop: 2 }}>
                     {dinero(l.precio_unit)} c/u · IVA {l.iva_pct}%
                     {l.descuento ? ` · desc. ${dinero(l.descuento)}` : ''}
                   </Text>
                   {l.stock !== undefined && l.cantidad > l.stock && (
-                    <Text style={{ color: colores.error, fontSize: 12, marginTop: 2 }}>
+                    <Text style={{ color: c.peligro, fontSize: 12, marginTop: 2 }}>
                       Solo hay {l.stock} en existencia
                     </Text>
                   )}
@@ -318,26 +319,19 @@ export default function PuntoDeVenta() {
           ]}
         />
         <View style={{ paddingHorizontal: 14, paddingBottom: 14 }}>
-          <Button
-            mode="contained"
+          <Boton
+            titulo="Registrar venta"
             onPress={registrar}
-            loading={crearVenta.isPending}
-            disabled={crearVenta.isPending || lineas.length === 0 || excedeStock}
-            buttonColor={colores.ok}
-            contentStyle={{ paddingVertical: 8 }}
-            style={{ borderRadius: 10 }}
-            icon={() => <MaterialCommunityIcons name="check" size={20} color="#fff" />}
-          >
-            Registrar venta
-          </Button>
+            cargando={crearVenta.isPending}
+            deshabilitado={lineas.length === 0 || excedeStock}
+          />
           {lineas.length > 0 && (
-            <Button
+            <Boton
+              titulo="Vaciar"
+              tono="suave"
               onPress={() => setLineas([])}
-              textColor={colores.suave}
-              style={{ marginTop: 6 }}
-            >
-              Vaciar
-            </Button>
+              style={{ marginTop: 8 }}
+            />
           )}
         </View>
       </Tarjeta>
@@ -346,7 +340,7 @@ export default function PuntoDeVenta() {
         <Dialog
           visible={!!editando}
           onDismiss={() => setEditando(null)}
-          style={{ backgroundColor: '#fff' }}
+          style={{ backgroundColor: c.superficie }}
         >
           <Dialog.Title>Editar linea</Dialog.Title>
           <Dialog.Content>

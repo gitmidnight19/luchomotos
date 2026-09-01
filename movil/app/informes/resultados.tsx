@@ -14,20 +14,31 @@ import {
   Tarjeta,
 } from '../../src/ui/componentes';
 import { usePeriodo } from '../../src/ui/periodo';
-import { colores } from '../../src/ui/tema';
+import { useTema } from '../../src/ui/temaProveedor';
 
 export default function Resultados() {
+  const { c } = useTema();
   const { desde, hasta, control } = usePeriodo('mes');
   const { data, isLoading, isRefetching, error, refetch } = useResultados(desde, hasta);
 
-  if (error) return <AvisoError mensaje={(error as Error).message} onReintentar={refetch} />;
-  if (isLoading || !data) return <Cargando />;
+  if (error)
+    return (
+      <Pantalla titulo="Estado de resultados" atras>
+        <AvisoError mensaje={(error as Error).message} onReintentar={refetch} />
+      </Pantalla>
+    );
+  if (isLoading || !data)
+    return (
+      <Pantalla titulo="Estado de resultados" atras>
+        <Cargando preset="informe" />
+      </Pantalla>
+    );
 
   const bloque = (titulo: string, filas: typeof data.ingresos, total: number, signo?: string) => (
     <Tarjeta titulo={titulo}>
       {filas.length === 0 ? (
         <View style={{ padding: 14 }}>
-          <Text style={{ color: colores.suave }}>Sin movimientos en el periodo</Text>
+          <Text style={{ color: c.suave }}>Sin movimientos en el periodo</Text>
         </View>
       ) : (
         filas.map((f) => (
@@ -39,7 +50,7 @@ export default function Resultados() {
           flexDirection: 'row',
           justifyContent: 'space-between',
           padding: 14,
-          backgroundColor: '#fafbfd',
+          backgroundColor: c.campo,
         }}
       >
         <Text style={{ fontWeight: '700' }}>
@@ -56,7 +67,7 @@ export default function Resultados() {
         flexDirection: 'row',
         justifyContent: 'space-between',
         padding: 16,
-        backgroundColor: colores.marcaSuave,
+        backgroundColor: c.marcaSuave,
         borderRadius: 12,
         marginBottom: 12,
       }}
@@ -66,7 +77,7 @@ export default function Resultados() {
         style={{
           fontWeight: '800',
           fontSize: 15,
-          color: valor >= 0 ? colores.ok : colores.error,
+          color: valor >= 0 ? c.bien : c.peligro,
         }}
       >
         {dinero(valor)}
@@ -75,7 +86,13 @@ export default function Resultados() {
   );
 
   return (
-    <Pantalla cargando={isRefetching} onRefrescar={refetch}>
+    <Pantalla
+      titulo="Estado de resultados"
+      subtitulo="Ingresos, costos y utilidad"
+      atras
+      cargando={isRefetching}
+      onRefrescar={refetch}
+    >
       {control}
 
       <Rejilla>
@@ -90,7 +107,7 @@ export default function Resultados() {
         />
       </Rejilla>
 
-      <Text style={{ color: colores.suave, marginBottom: 10 }}>
+      <Text style={{ color: c.suave, marginBottom: 10 }}>
         Del {fechaCorta(data.desde)} al {fechaCorta(data.hasta)}
       </Text>
 

@@ -8,6 +8,7 @@ import { useCrearCompra, useProductos, useTerceros } from '../../src/api/hooks';
 import type { FormaPago, MetodoPago } from '../../src/api/tipos';
 import { aCentavos, aNumero, dinero, enPesos, multiplicar, tasa } from '../../src/lib/formato';
 import {
+  Boton,
   CampoNumero,
   CampoTexto,
   Fila,
@@ -18,7 +19,7 @@ import {
   TotalesCaja,
   Vacio,
 } from '../../src/ui/componentes';
-import { colores } from '../../src/ui/tema';
+import { useTema } from '../../src/ui/temaProveedor';
 
 type Linea = {
   clave: string;
@@ -31,6 +32,7 @@ type Linea = {
 };
 
 export default function NuevaCompra() {
+  const { c } = useTema();
   const [busqueda, setBusqueda] = useState('');
   const [lineas, setLineas] = useState<Linea[]>([]);
   const [proveedorId, setProveedorId] = useState<number | null>(null);
@@ -105,7 +107,7 @@ export default function NuevaCompra() {
   }
 
   return (
-    <Pantalla>
+    <Pantalla titulo="Registrar compra" subtitulo="Factura de proveedor" atras>
       <Tarjeta titulo="Datos de la factura de compra">
         <View style={{ padding: 14, paddingBottom: 2 }}>
           <Selector
@@ -149,7 +151,7 @@ export default function NuevaCompra() {
         placeholder="Buscar repuesto para agregar…"
         value={busqueda}
         onChangeText={setBusqueda}
-        style={{ marginBottom: 12, backgroundColor: '#fff', borderRadius: 12 }}
+        style={{ marginBottom: 12, backgroundColor: c.superficie, borderRadius: 12 }}
       />
 
       {busqueda.trim().length >= 2 && (
@@ -184,15 +186,15 @@ export default function NuevaCompra() {
                 alignItems: 'center',
                 padding: 12,
                 borderBottomWidth: 1,
-                borderBottomColor: colores.linea,
+                borderBottomColor: c.linea,
               }}
             >
               <View style={{ flex: 1 }}>
                 <Text style={{ fontWeight: '600' }}>{l.nombre}</Text>
-                <Text style={{ color: colores.suave, fontSize: 12.5 }}>
+                <Text style={{ color: c.suave, fontSize: 12.5 }}>
                   {l.cantidad} x {dinero(l.costo_unit)} · IVA {l.iva_pct}%
                 </Text>
-                <Text style={{ color: colores.suave, fontSize: 12.5 }}>
+                <Text style={{ color: c.suave, fontSize: 12.5 }}>
                   Precio de venta: {dinero(l.precio_venta)}
                 </Text>
               </View>
@@ -219,17 +221,12 @@ export default function NuevaCompra() {
           ]}
         />
         <View style={{ paddingHorizontal: 14, paddingBottom: 14 }}>
-          <Button
-            mode="contained"
+          <Boton
+            titulo="Registrar compra"
             onPress={guardar}
-            loading={crear.isPending}
-            disabled={lineas.length === 0}
-            buttonColor={colores.ok}
-            style={{ borderRadius: 10 }}
-            contentStyle={{ paddingVertical: 6 }}
-          >
-            Registrar compra
-          </Button>
+            cargando={crear.isPending}
+            deshabilitado={lineas.length === 0}
+          />
         </View>
       </Tarjeta>
 
@@ -237,7 +234,7 @@ export default function NuevaCompra() {
         <Dialog
           visible={!!editando}
           onDismiss={() => setEditando(null)}
-          style={{ backgroundColor: '#fff' }}
+          style={{ backgroundColor: c.superficie }}
         >
           <Dialog.Title>{editando?.nombre}</Dialog.Title>
           <Dialog.Content>

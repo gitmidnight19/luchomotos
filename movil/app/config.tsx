@@ -14,17 +14,21 @@ import {
 } from '../src/api/hooks';
 import { configurarFormato, dinero } from '../src/lib/formato';
 import {
+  Boton,
   CampoNumero,
   CampoTexto,
   Cargando,
   Etiqueta,
   Fila,
+  Opciones,
   Pantalla,
   Tarjeta,
 } from '../src/ui/componentes';
-import { colores } from '../src/ui/tema';
+import type { Preferencia } from '../src/ui/temaProveedor';
+import { useTema } from '../src/ui/temaProveedor';
 
 export default function Configuracion() {
+  const { c, preferencia, elegir } = useTema();
   const { data, isLoading, refetch, isRefetching } = useConfig();
   const { data: estado } = useEstado();
   const guardar = useGuardarConfig();
@@ -38,7 +42,12 @@ export default function Configuracion() {
     if (data) setValores(data);
   }, [data]);
 
-  if (isLoading || !data) return <Cargando />;
+  if (isLoading || !data)
+    return (
+      <Pantalla titulo="Configuracion" atras>
+        <Cargando />
+      </Pantalla>
+    );
 
   const campo = (clave: string) => valores[clave] ?? '';
   const cambiar = (clave: string) => (texto: string) =>
@@ -111,7 +120,30 @@ export default function Configuracion() {
   }
 
   return (
-    <Pantalla cargando={isRefetching} onRefrescar={refetch}>
+    <Pantalla
+      titulo="Configuracion"
+      subtitulo="Apariencia, datos del taller y servidor"
+      atras
+      cargando={isRefetching}
+      onRefrescar={refetch}
+    >
+      <Tarjeta titulo="Apariencia">
+        <View style={{ padding: 14, paddingBottom: 2 }}>
+          <Opciones<Preferencia>
+            valor={preferencia}
+            opciones={[
+              { valor: 'sistema', texto: 'Sistema' },
+              { valor: 'claro', texto: 'Claro' },
+              { valor: 'oscuro', texto: 'Oscuro' },
+            ]}
+            onCambio={elegir}
+          />
+          <Text style={{ color: c.suave, marginBottom: 12, fontSize: 12.5 }}>
+            En «Sistema» sigue lo que tenga configurado el telefono.
+          </Text>
+        </View>
+      </Tarjeta>
+
       <Tarjeta titulo="Datos del taller">
         <View style={{ padding: 14, paddingBottom: 2 }}>
           <CampoTexto
@@ -155,7 +187,7 @@ export default function Configuracion() {
             value={campo('iva_pct')}
             onChangeText={cambiar('iva_pct')}
           />
-          <Text style={{ color: colores.suave, marginBottom: 12, fontSize: 12.5 }}>
+          <Text style={{ color: c.suave, marginBottom: 12, fontSize: 12.5 }}>
             Viene en 19%. Cambielo al que aplique a su negocio, o pongalo en 0 si no es responsable
             de IVA. Cada repuesto y cada linea de la venta lo puede sobrescribir.
           </Text>
@@ -222,16 +254,22 @@ export default function Configuracion() {
 
       <Tarjeta titulo="Datos de prueba">
         <View style={{ padding: 14, gap: 8 }}>
-          <Text style={{ color: colores.suave, fontSize: 13 }}>
+          <Text style={{ color: c.suave, fontSize: 13 }}>
             Para conocer el sistema puede cargar 3 meses de operacion simulada, y despues dejar la
             base limpia para empezar con la informacion real del taller.
           </Text>
-          <Button mode="outlined" onPress={cargarEjemplo} loading={demo.isPending}>
-            Cargar datos de ejemplo
-          </Button>
-          <Button textColor={colores.error} onPress={borrarTodo} loading={limpiar.isPending}>
-            Borrar todos los movimientos
-          </Button>
+          <Boton
+            titulo="Cargar datos de ejemplo"
+            tono="suave"
+            onPress={cargarEjemplo}
+            cargando={demo.isPending}
+          />
+          <Boton
+            titulo="Borrar todos los movimientos"
+            tono="peligro"
+            onPress={borrarTodo}
+            cargando={limpiar.isPending}
+          />
         </View>
       </Tarjeta>
     </Pantalla>

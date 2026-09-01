@@ -37,7 +37,13 @@ export default function Ventas() {
   const costo = activas.reduce((s, v) => s + v.costo_total, 0);
 
   return (
-    <Pantalla cargando={isRefetching} onRefrescar={refetch}>
+    <Pantalla
+      titulo="Ventas"
+      subtitulo="Facturas emitidas y anulaciones"
+      atras
+      cargando={isRefetching}
+      onRefrescar={refetch}
+    >
       {control}
       <Opciones
         valor={soloPendientes}

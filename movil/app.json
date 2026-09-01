@@ -1,33 +1,34 @@
 {
   "expo": {
-    "name": "Taller Contable",
+    "name": "Taller Motos Lucho",
     "slug": "taller-contable",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.taller.contable"
+      "bundleIdentifier": "com.taller.contable",
+      "userInterfaceStyle": "automatic"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.taller.contable",
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "userInterfaceStyle": "automatic"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": [
-      "expo-router",
-      "expo-font"
-    ],
-    "scheme": "tallercontable"
+    "plugins": ["expo-router", "expo-font"],
+    "scheme": "tallercontable",
+    "backgroundColor": "#F2F2F7",
+    "primaryColor": "#B11212"
   }
 }

@@ -1,7 +1,7 @@
 /** Parque de motos atendidas por el taller. */
 import { useMemo, useState } from 'react';
 import { Alert, View } from 'react-native';
-import { Button, Dialog, FAB, Portal, Searchbar } from 'react-native-paper';
+import { Button, Dialog, Portal, Searchbar } from 'react-native-paper';
 
 import { useBorrarMoto, useGuardarMoto, useMotos, useTerceros } from '../src/api/hooks';
 import type { Moto } from '../src/api/tipos';
@@ -14,7 +14,7 @@ import {
   Tarjeta,
   Vacio,
 } from '../src/ui/componentes';
-import { colores } from '../src/ui/tema';
+import { useTema } from '../src/ui/temaProveedor';
 
 const VACIA = {
   placa: '',
@@ -28,6 +28,7 @@ const VACIA = {
 };
 
 export default function Motos() {
+  const { c } = useTema();
   const { data = [], isLoading, isRefetching, refetch } = useMotos();
   const { data: clientes = [] } = useTerceros('cliente');
   const guardar = useGuardarMoto();
@@ -75,52 +76,54 @@ export default function Motos() {
     }
   }
 
-  if (isLoading) return <Cargando />;
+  if (isLoading)
+    return (
+      <Pantalla titulo="Motos" atras>
+        <Cargando />
+      </Pantalla>
+    );
 
   return (
-    <View style={{ flex: 1 }}>
-      <Pantalla cargando={isRefetching} onRefrescar={refetch}>
-        <Searchbar
-          placeholder="Buscar por placa o dueño…"
-          value={busqueda}
-          onChangeText={setBusqueda}
-          style={{ marginBottom: 12, backgroundColor: '#fff', borderRadius: 12 }}
-          autoCapitalize="characters"
-        />
-        <Tarjeta titulo={`${lista.length} motos`}>
-          {lista.length === 0 ? (
-            <Vacio titulo="Sin motos" texto="Registre las motos para llevar su historial." />
-          ) : (
-            lista.map((m) => (
-              <Fila
-                key={m.id}
-                titulo={m.placa ?? 'Sin placa'}
-                subtitulo={[m.marca, m.linea, m.modelo].filter(Boolean).join(' · ') || undefined}
-                detalle={m.cliente_nombre ?? 'Sin propietario'}
-                onPress={() => abrir(m)}
-                valor={m.cilindraje ?? ''}
-              />
-            ))
-          )}
-        </Tarjeta>
-      </Pantalla>
-
-      <FAB
-        icon="plus"
-        label="Moto"
-        onPress={() => abrir()}
-        style={{ position: 'absolute', right: 16, bottom: 20 }}
+    <Pantalla
+      titulo="Motos"
+      subtitulo="Historial por placa"
+      atras
+      cargando={isRefetching}
+      onRefrescar={refetch}
+      accion={{ rotulo: 'Moto', onPress: () => abrir() }}
+    >
+      <Searchbar
+        placeholder="Buscar por placa o dueño…"
+        value={busqueda}
+        onChangeText={setBusqueda}
+        style={{ marginBottom: 12, backgroundColor: c.superficie, borderRadius: 12 }}
+        autoCapitalize="characters"
       />
-
+      <Tarjeta titulo={`${lista.length} motos`}>
+        {lista.length === 0 ? (
+          <Vacio titulo="Sin motos" texto="Registre las motos para llevar su historial." />
+        ) : (
+          lista.map((m) => (
+            <Fila
+              key={m.id}
+              titulo={m.placa ?? 'Sin placa'}
+              subtitulo={[m.marca, m.linea, m.modelo].filter(Boolean).join(' · ') || undefined}
+              detalle={m.cliente_nombre ?? 'Sin propietario'}
+              onPress={() => abrir(m)}
+              valor={m.cilindraje ?? ''}
+            />
+          ))
+        )}
+      </Tarjeta>
       <Portal>
         <Dialog
           visible={!!editando}
           onDismiss={() => setEditando(null)}
-          style={{ backgroundColor: '#fff', maxHeight: '85%' }}
+          style={{ backgroundColor: c.superficie, maxHeight: '85%' }}
         >
           <Dialog.Title>{editando?.id ? 'Editar moto' : 'Registrar moto'}</Dialog.Title>
           <Dialog.ScrollArea>
-            <Pantalla sinPadding>
+            <Pantalla incrustada>
               {!!editando && (
                 <View style={{ padding: 14 }}>
                   <CampoTexto
@@ -164,7 +167,7 @@ export default function Motos() {
                   />
                   {!!editando.id && (
                     <Button
-                      textColor={colores.error}
+                      textColor={c.peligro}
                       onPress={() =>
                         Alert.alert('Borrar moto', '¿Continuar?', [
                           { text: 'Cancelar', style: 'cancel' },
@@ -194,6 +197,6 @@ export default function Motos() {
           </Dialog.Actions>
         </Dialog>
       </Portal>
-    </View>
+    </Pantalla>
   );
 }

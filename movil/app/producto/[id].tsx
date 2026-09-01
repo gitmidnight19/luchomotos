@@ -1,5 +1,5 @@
 /** Ficha del repuesto: datos, kardex y ajuste de existencias. */
-import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, View } from 'react-native';
 import { Button, Dialog, Portal, Text } from 'react-native-paper';
@@ -35,9 +35,10 @@ import {
   Tarjeta,
   Vacio,
 } from '../../src/ui/componentes';
-import { colores } from '../../src/ui/tema';
+import { useTema } from '../../src/ui/temaProveedor';
 
 export default function FichaProducto() {
+  const { c } = useTema();
   const { id } = useLocalSearchParams<{ id: string }>();
   const esNuevo = id === 'nuevo';
   const productoId = esNuevo ? 0 : Number(id);
@@ -48,7 +49,6 @@ export default function FichaProducto() {
   const guardar = useGuardarProducto();
   const borrar = useBorrarProducto();
   const ajustar = useAjustarInventario();
-  const navigation = useNavigation();
   const router = useRouter();
 
   const producto = inventario?.items.find((p) => p.id === productoId);
@@ -68,10 +68,6 @@ export default function FichaProducto() {
   const [notaAjuste, setNotaAjuste] = useState('');
 
   useEffect(() => {
-    navigation.setOptions({ title: esNuevo ? 'Nuevo repuesto' : (producto?.nombre ?? 'Repuesto') });
-  }, [navigation, producto, esNuevo]);
-
-  useEffect(() => {
     if (!producto) return;
     setNombre(producto.nombre);
     setSku(producto.sku ?? '');
@@ -83,9 +79,18 @@ export default function FichaProducto() {
   }, [producto]);
 
   if (!esNuevo && !producto && inventario) {
-    return <Vacio titulo="Repuesto no encontrado" />;
+    return (
+      <Pantalla titulo="Repuesto" atras>
+        <Vacio titulo="Repuesto no encontrado" />
+      </Pantalla>
+    );
   }
-  if (!esNuevo && !inventario) return <Cargando />;
+  if (!esNuevo && !inventario)
+    return (
+      <Pantalla titulo="Repuesto" atras>
+        <Cargando preset="tarjeta" />
+      </Pantalla>
+    );
 
   async function guardarProducto() {
     if (!nombre.trim()) {
@@ -144,7 +149,11 @@ export default function FichaProducto() {
   }
 
   return (
-    <Pantalla>
+    <Pantalla
+      titulo={esNuevo ? 'Nuevo repuesto' : (producto?.nombre ?? 'Repuesto')}
+      subtitulo={esNuevo ? 'Ficha del repuesto' : (producto?.sku ?? undefined)}
+      atras
+    >
       {!!producto && (
         <Rejilla>
           <Kpi
@@ -182,7 +191,7 @@ export default function FichaProducto() {
 
           {esNuevo && (
             <>
-              <Text style={{ color: colores.suave, marginBottom: 10 }}>
+              <Text style={{ color: c.suave, marginBottom: 10 }}>
                 Si ya tiene unidades en bodega, registrelas aqui: se contabilizan como aporte de
                 capital en inventario. Si va a ingresarlas con factura, deje 0 y registre una
                 compra.
@@ -232,13 +241,13 @@ export default function FichaProducto() {
                         <Text
                           style={{
                             fontWeight: '700',
-                            color: m.cantidad >= 0 ? colores.ok : colores.error,
+                            color: m.cantidad >= 0 ? c.bien : c.peligro,
                           }}
                         >
                           {m.cantidad > 0 ? '+' : ''}
                           {cantidad(m.cantidad)}
                         </Text>
-                        <Text style={{ fontSize: 12, color: colores.suave }}>
+                        <Text style={{ fontSize: 12, color: c.suave }}>
                           saldo {cantidad(m.saldo_cant)}
                         </Text>
                       </View>
@@ -252,7 +261,7 @@ export default function FichaProducto() {
             <Button mode="outlined" onPress={() => setDialogoAjuste(true)}>
               Ajustar existencias
             </Button>
-            <Button textColor={colores.error} onPress={confirmarBorrar}>
+            <Button textColor={c.peligro} onPress={confirmarBorrar}>
               Retirar repuesto
             </Button>
           </View>
@@ -263,11 +272,11 @@ export default function FichaProducto() {
         <Dialog
           visible={dialogoAjuste}
           onDismiss={() => setDialogoAjuste(false)}
-          style={{ backgroundColor: '#fff' }}
+          style={{ backgroundColor: c.superficie }}
         >
           <Dialog.Title>Ajustar existencias</Dialog.Title>
           <Dialog.Content>
-            <Text style={{ marginBottom: 12, color: colores.suave }}>
+            <Text style={{ marginBottom: 12, color: c.suave }}>
               Existencia registrada: {cantidad(producto?.stock ?? 0)}
             </Text>
             <Opciones
@@ -287,7 +296,7 @@ export default function FichaProducto() {
               onChangeText={setCantidadAjuste}
             />
             <CampoTexto label="Motivo" value={notaAjuste} onChangeText={setNotaAjuste} />
-            <Text style={{ color: colores.suave, fontSize: 12.5 }}>
+            <Text style={{ color: c.suave, fontSize: 12.5 }}>
               El faltante se registra como perdida de inventario y el sobrante como otro ingreso.
             </Text>
           </Dialog.Content>

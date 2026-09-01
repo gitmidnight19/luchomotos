@@ -1,5 +1,5 @@
 /** Orden de trabajo: recibir la moto, anotar el trabajo y facturarla. */
-import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, View } from 'react-native';
 import { Button, Dialog, IconButton, Portal, Text } from 'react-native-paper';
@@ -18,6 +18,7 @@ import {
 import type { EstadoOrden, FormaPago, ItemOrdenEntrada, MetodoPago } from '../../src/api/tipos';
 import { aNumero, dinero, multiplicar, tasa } from '../../src/lib/formato';
 import {
+  Boton,
   CampoNumero,
   CampoTexto,
   Cargando,
@@ -29,11 +30,12 @@ import {
   TotalesCaja,
   Vacio,
 } from '../../src/ui/componentes';
-import { colores } from '../../src/ui/tema';
+import { useTema } from '../../src/ui/temaProveedor';
 
 type Item = ItemOrdenEntrada & { clave: string; iva_pct: number };
 
 export default function OrdenTrabajo() {
+  const { c } = useTema();
   const { id } = useLocalSearchParams<{ id: string }>();
   const esNueva = id === 'nueva';
   const ordenId = esNueva ? 0 : Number(id);
@@ -50,7 +52,6 @@ export default function OrdenTrabajo() {
   const anular = useAnularOrden();
 
   const router = useRouter();
-  const navigation = useNavigation();
 
   const [clienteId, setClienteId] = useState<number | null>(null);
   const [motoId, setMotoId] = useState<number | null>(null);
@@ -64,10 +65,6 @@ export default function OrdenTrabajo() {
   const [dialogoFacturar, setDialogoFacturar] = useState(false);
   const [formaPago, setFormaPago] = useState<FormaPago>('contado');
   const [metodo, setMetodo] = useState<MetodoPago>('efectivo');
-
-  useEffect(() => {
-    navigation.setOptions({ title: esNueva ? 'Nueva orden' : (orden?.numero ?? 'Orden') });
-  }, [navigation, orden, esNueva]);
 
   useEffect(() => {
     if (!orden) return;
@@ -92,7 +89,12 @@ export default function OrdenTrabajo() {
     );
   }, [orden]);
 
-  if (!esNueva && isLoading) return <Cargando />;
+  if (!esNueva && isLoading)
+    return (
+      <Pantalla titulo="Orden de trabajo" atras>
+        <Cargando preset="tarjeta" />
+      </Pantalla>
+    );
 
   const facturada = orden?.estado === 'facturada';
   const subtotal = items.reduce((s, i) => s + multiplicar(i.precio_unit, i.cantidad), 0);
@@ -203,12 +205,16 @@ export default function OrdenTrabajo() {
   const motosDelCliente = clienteId ? motos.filter((m) => m.cliente_id === clienteId) : motos;
 
   return (
-    <Pantalla>
+    <Pantalla
+      titulo={esNueva ? 'Nueva orden' : (orden?.numero ?? 'Orden')}
+      subtitulo={esNueva ? 'Recepcion de la moto' : (orden?.cliente_nombre ?? undefined)}
+      atras
+    >
       {facturada && (
         <Tarjeta>
           <View style={{ padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <Etiqueta texto="facturada" tono="gris" />
-            <Text style={{ color: colores.suave, flex: 1 }}>
+            <Text style={{ color: c.suave, flex: 1 }}>
               Esta orden ya se facturo y no se puede modificar.
             </Text>
           </View>
@@ -275,7 +281,7 @@ export default function OrdenTrabajo() {
                 alignItems: 'center',
                 padding: 12,
                 borderBottomWidth: 1,
-                borderBottomColor: colores.linea,
+                borderBottomColor: c.linea,
               }}
             >
               <View style={{ flex: 1 }}>
@@ -283,7 +289,7 @@ export default function OrdenTrabajo() {
                   {i.tipo === 'producto' ? '🔩 ' : '⚙ '}
                   {i.descripcion}
                 </Text>
-                <Text style={{ color: colores.suave, fontSize: 12.5 }}>
+                <Text style={{ color: c.suave, fontSize: 12.5 }}>
                   {i.cantidad} x {dinero(i.precio_unit)}
                 </Text>
               </View>
@@ -324,30 +330,21 @@ export default function OrdenTrabajo() {
 
       {!facturada && (
         <View style={{ gap: 8, marginBottom: 20 }}>
-          <Button
-            mode="contained"
+          {/* Una sola accion con color por bloque: la de marca es la del paso en curso. */}
+          <Boton
+            titulo={esNueva ? 'Crear orden' : 'Guardar cambios'}
             onPress={guardar}
-            loading={crear.isPending || editar.isPending}
-            contentStyle={{ paddingVertical: 6 }}
-            style={{ borderRadius: 10 }}
-          >
-            {esNueva ? 'Crear orden' : 'Guardar cambios'}
-          </Button>
+            cargando={crear.isPending || editar.isPending}
+          />
           {!esNueva && (
             <>
-              <Button
-                mode="contained"
-                buttonColor={colores.ok}
+              <Boton
+                titulo="Facturar orden"
+                tono="suave"
                 onPress={() => setDialogoFacturar(true)}
-                contentStyle={{ paddingVertical: 6 }}
-                style={{ borderRadius: 10 }}
-                disabled={items.length === 0}
-              >
-                Facturar orden
-              </Button>
-              <Button textColor={colores.error} onPress={confirmarAnular}>
-                Anular orden
-              </Button>
+                deshabilitado={items.length === 0}
+              />
+              <Boton titulo="Anular orden" tono="peligro" onPress={confirmarAnular} />
             </>
           )}
         </View>
@@ -357,17 +354,17 @@ export default function OrdenTrabajo() {
         <Dialog
           visible={agregando !== null}
           onDismiss={() => setAgregando(null)}
-          style={{ backgroundColor: '#fff', maxHeight: '75%' }}
+          style={{ backgroundColor: c.superficie, maxHeight: '75%' }}
         >
           <Dialog.Title>{agregando === 'servicio' ? 'Servicios' : 'Repuestos'}</Dialog.Title>
           <Dialog.ScrollArea>
-            <Pantalla sinPadding>
+            <Pantalla incrustada>
               {(agregando === 'servicio' ? servicios : productos).map((x) => (
                 <Button
                   key={x.id}
                   onPress={() => agregarItem(agregando!, x.id)}
                   contentStyle={{ justifyContent: 'flex-start' }}
-                  textColor={colores.texto}
+                  textColor={c.texto}
                 >
                   {'precio' in x
                     ? `${x.nombre} · ${dinero(x.precio)}`
@@ -384,7 +381,7 @@ export default function OrdenTrabajo() {
         <Dialog
           visible={dialogoFacturar}
           onDismiss={() => setDialogoFacturar(false)}
-          style={{ backgroundColor: '#fff' }}
+          style={{ backgroundColor: c.superficie }}
         >
           <Dialog.Title>Facturar orden</Dialog.Title>
           <Dialog.Content>
@@ -408,7 +405,7 @@ export default function OrdenTrabajo() {
                 ]}
               />
             )}
-            <Text style={{ color: colores.suave }}>
+            <Text style={{ color: c.suave }}>
               Se genera la factura, se descarga el inventario y se contabiliza automaticamente.
             </Text>
           </Dialog.Content>

@@ -1,5 +1,5 @@
 /** Factura: detalle, abonos y anulacion. */
-import { useLocalSearchParams, useNavigation } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, Share, View } from 'react-native';
 import { Button, Dialog, Portal, Text } from 'react-native-paper';
@@ -8,6 +8,7 @@ import { useAnularVenta, useConfig, useRegistrarPago, useVenta } from '../../src
 import type { MetodoPago } from '../../src/api/tipos';
 import { aCentavos, cantidad, dinero, enPesos, fechaLarga } from '../../src/lib/formato';
 import {
+  Boton,
   CampoNumero,
   Cargando,
   Etiqueta,
@@ -18,30 +19,31 @@ import {
   TotalesCaja,
   Vacio,
 } from '../../src/ui/componentes';
-import { colores } from '../../src/ui/tema';
+import { useTema } from '../../src/ui/temaProveedor';
 
 export default function Factura() {
+  const { c } = useTema();
   const { id } = useLocalSearchParams<{ id: string }>();
   const ventaId = Number(id);
   const { data: venta, isLoading } = useVenta(ventaId);
   const { data: config } = useConfig();
   const anular = useAnularVenta();
   const cobrar = useRegistrarPago();
-  const navigation = useNavigation();
 
   const [dialogoCobro, setDialogoCobro] = useState(false);
   const [monto, setMonto] = useState('0');
   const [metodo, setMetodo] = useState<MetodoPago>('efectivo');
 
   useEffect(() => {
-    navigation.setOptions({ title: venta?.numero ?? 'Factura' });
-  }, [navigation, venta]);
-
-  useEffect(() => {
     if (venta) setMonto(String(enPesos(venta.saldo)));
   }, [venta]);
 
-  if (isLoading || !venta) return <Cargando />;
+  if (isLoading || !venta)
+    return (
+      <Pantalla titulo="Factura" atras>
+        <Cargando preset="tarjeta" />
+      </Pantalla>
+    );
 
   async function compartir() {
     if (!venta) return;
@@ -100,7 +102,7 @@ export default function Factura() {
   }
 
   return (
-    <Pantalla>
+    <Pantalla titulo={venta.numero ?? 'Factura'} subtitulo="Factura de venta" atras>
       <Tarjeta>
         <View style={{ padding: 16 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
@@ -108,14 +110,12 @@ export default function Factura() {
               <Text variant="titleMedium" style={{ fontWeight: '800' }}>
                 {config?.empresa ?? 'Taller'}
               </Text>
-              {!!config?.nit && <Text style={{ color: colores.suave }}>NIT {config.nit}</Text>}
-              {!!config?.telefono && (
-                <Text style={{ color: colores.suave }}>{config.telefono}</Text>
-              )}
+              {!!config?.nit && <Text style={{ color: c.suave }}>NIT {config.nit}</Text>}
+              {!!config?.telefono && <Text style={{ color: c.suave }}>{config.telefono}</Text>}
             </View>
             <View style={{ alignItems: 'flex-end' }}>
               <Text style={{ fontWeight: '800' }}>{venta.numero}</Text>
-              <Text style={{ color: colores.suave }}>{fechaLarga(venta.fecha)}</Text>
+              <Text style={{ color: c.suave }}>{fechaLarga(venta.fecha)}</Text>
               {venta.estado === 'anulada' ? (
                 <Etiqueta texto="ANULADA" tono="mal" />
               ) : (
@@ -123,18 +123,12 @@ export default function Factura() {
               )}
             </View>
           </View>
-          <View
-            style={{ marginTop: 12, backgroundColor: colores.fondo, padding: 10, borderRadius: 8 }}
-          >
+          <View style={{ marginTop: 12, backgroundColor: c.fondo, padding: 10, borderRadius: 8 }}>
             <Text style={{ fontWeight: '600' }}>{venta.cliente_nombre ?? 'Cliente ocasional'}</Text>
-            {!!venta.documento && (
-              <Text style={{ color: colores.suave }}>Doc. {venta.documento}</Text>
-            )}
-            {!!venta.telefono && (
-              <Text style={{ color: colores.suave }}>Tel. {venta.telefono}</Text>
-            )}
+            {!!venta.documento && <Text style={{ color: c.suave }}>Doc. {venta.documento}</Text>}
+            {!!venta.telefono && <Text style={{ color: c.suave }}>Tel. {venta.telefono}</Text>}
             {!!venta.placa && (
-              <Text style={{ color: colores.suave }}>
+              <Text style={{ color: c.suave }}>
                 Moto: {venta.placa} {venta.marca ?? ''} {venta.linea_moto ?? ''}
               </Text>
             )}
@@ -195,23 +189,22 @@ export default function Factura() {
       )}
 
       <View style={{ gap: 8, marginBottom: 24 }}>
-        <Button
-          mode="contained"
-          onPress={compartir}
-          icon="share-variant"
-          style={{ borderRadius: 10 }}
-        >
-          Compartir factura
-        </Button>
+        {/* Lo que mueve a actuar va arriba: si queda saldo, lo primero es cobrar. */}
         {venta.estado === 'activa' && venta.saldo > 0 && (
-          <Button mode="outlined" onPress={() => setDialogoCobro(true)}>
-            Registrar abono
-          </Button>
+          <Boton titulo="Registrar abono" onPress={() => setDialogoCobro(true)} />
         )}
+        <Boton
+          titulo="Compartir factura"
+          tono={venta.estado === 'activa' && venta.saldo > 0 ? 'suave' : 'marca'}
+          onPress={compartir}
+        />
         {venta.estado === 'activa' && (
-          <Button textColor={colores.error} onPress={confirmarAnular} loading={anular.isPending}>
-            Anular factura
-          </Button>
+          <Boton
+            titulo="Anular factura"
+            tono="peligro"
+            onPress={confirmarAnular}
+            cargando={anular.isPending}
+          />
         )}
       </View>
 
@@ -219,11 +212,11 @@ export default function Factura() {
         <Dialog
           visible={dialogoCobro}
           onDismiss={() => setDialogoCobro(false)}
-          style={{ backgroundColor: '#fff' }}
+          style={{ backgroundColor: c.superficie }}
         >
           <Dialog.Title>Registrar abono</Dialog.Title>
           <Dialog.Content>
-            <Text style={{ marginBottom: 10, color: colores.suave }}>
+            <Text style={{ marginBottom: 10, color: c.suave }}>
               Saldo pendiente: {dinero(venta.saldo)}
             </Text>
             <CampoNumero label="Monto" value={monto} onChangeText={setMonto} />

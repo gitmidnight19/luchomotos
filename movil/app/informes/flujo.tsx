@@ -15,18 +15,35 @@ import {
   Vacio,
 } from '../../src/ui/componentes';
 import { usePeriodo } from '../../src/ui/periodo';
-import { colores } from '../../src/ui/tema';
+import { useTema } from '../../src/ui/temaProveedor';
 
 export default function Flujo() {
+  const { c } = useTema();
   const { desde, hasta, control } = usePeriodo('mes');
   const { data, isLoading, isRefetching, error, refetch } = useFlujo(desde, hasta);
   const { data: impuestos } = useImpuestos(desde, hasta);
 
-  if (error) return <AvisoError mensaje={(error as Error).message} onReintentar={refetch} />;
-  if (isLoading || !data) return <Cargando />;
+  if (error)
+    return (
+      <Pantalla titulo="Flujo de caja" atras>
+        <AvisoError mensaje={(error as Error).message} onReintentar={refetch} />
+      </Pantalla>
+    );
+  if (isLoading || !data)
+    return (
+      <Pantalla titulo="Flujo de caja" atras>
+        <Cargando preset="informe" />
+      </Pantalla>
+    );
 
   return (
-    <Pantalla cargando={isRefetching} onRefrescar={refetch}>
+    <Pantalla
+      titulo="Flujo de caja"
+      subtitulo="Entradas y salidas de dinero"
+      atras
+      cargando={isRefetching}
+      onRefrescar={refetch}
+    >
       {control}
 
       <Rejilla>
@@ -46,7 +63,7 @@ export default function Flujo() {
             tonoValor={impuestos.saldo_a_pagar >= 0 ? 'mal' : 'ok'}
           />
           <View style={{ padding: 14 }}>
-            <Text style={{ color: colores.suave, fontSize: 12.5 }}>
+            <Text style={{ color: c.suave, fontSize: 12.5 }}>
               Calculo informativo. Verifique el calendario tributario que le aplique antes de
               declarar.
             </Text>
@@ -68,14 +85,12 @@ export default function Flujo() {
                   <Text
                     style={{
                       fontWeight: '700',
-                      color: m.entra > 0 ? colores.ok : colores.error,
+                      color: m.entra > 0 ? c.bien : c.peligro,
                     }}
                   >
                     {m.entra > 0 ? `+${dinero(m.entra)}` : `-${dinero(m.sale)}`}
                   </Text>
-                  <Text style={{ fontSize: 12, color: colores.suave }}>
-                    saldo {dinero(m.saldo)}
-                  </Text>
+                  <Text style={{ fontSize: 12, color: c.suave }}>saldo {dinero(m.saldo)}</Text>
                 </View>
               }
             />

@@ -16,6 +16,7 @@ import {
   primerDiaMes,
 } from '../src/lib/formato';
 import {
+  Boton,
   CampoNumero,
   CampoTexto,
   Cargando,
@@ -28,9 +29,10 @@ import {
   Tarjeta,
   Vacio,
 } from '../src/ui/componentes';
-import { colores } from '../src/ui/tema';
+import { useTema } from '../src/ui/temaProveedor';
 
 export default function Cartera() {
+  const { c } = useTema();
   const { data, isLoading, isRefetching, refetch } = useCartera();
   const { data: pagos = [] } = usePagos(primerDiaMes(), hoy());
   const registrar = useRegistrarPago();
@@ -48,7 +50,12 @@ export default function Cartera() {
   const [origen, setOrigen] = useState<MetodoPago>('efectivo');
   const [nota, setNota] = useState('Consignacion del recaudo');
 
-  if (isLoading || !data) return <Cargando />;
+  if (isLoading || !data)
+    return (
+      <Pantalla titulo="Cobros y pagos" atras>
+        <Cargando />
+      </Pantalla>
+    );
 
   async function guardarPago() {
     const actual = cobro;
@@ -84,7 +91,13 @@ export default function Cartera() {
   }
 
   return (
-    <Pantalla cargando={isRefetching} onRefrescar={refetch}>
+    <Pantalla
+      titulo="Cobros y pagos"
+      subtitulo="Cartera de clientes y deuda con proveedores"
+      atras
+      cargando={isRefetching}
+      onRefrescar={refetch}
+    >
       <Rejilla>
         <Kpi
           etiqueta="Por cobrar"
@@ -100,14 +113,12 @@ export default function Cartera() {
         />
       </Rejilla>
 
-      <Button
-        mode="outlined"
-        icon="swap-horizontal"
+      <Boton
+        titulo="Traslado entre caja y banco"
+        tono="suave"
         onPress={() => setDialogoTraslado(true)}
         style={{ marginBottom: 12 }}
-      >
-        Traslado entre caja y banco
-      </Button>
+      />
 
       <Tarjeta titulo="Clientes que nos deben">
         {data.por_cobrar.length === 0 ? (
@@ -184,13 +195,13 @@ export default function Cartera() {
         <Dialog
           visible={!!cobro}
           onDismiss={() => setCobro(null)}
-          style={{ backgroundColor: '#fff' }}
+          style={{ backgroundColor: c.superficie }}
         >
           <Dialog.Title>
             {cobro?.clase === 'cobro' ? 'Registrar abono' : 'Pagar al proveedor'}
           </Dialog.Title>
           <Dialog.Content>
-            <Text style={{ color: colores.suave, marginBottom: 10 }}>
+            <Text style={{ color: c.suave, marginBottom: 10 }}>
               Saldo pendiente: {dinero(cobro?.saldo ?? 0)}
             </Text>
             <CampoNumero label="Monto" value={monto} onChangeText={setMonto} />
@@ -215,7 +226,7 @@ export default function Cartera() {
         <Dialog
           visible={dialogoTraslado}
           onDismiss={() => setDialogoTraslado(false)}
-          style={{ backgroundColor: '#fff' }}
+          style={{ backgroundColor: c.superficie }}
         >
           <Dialog.Title>Traslado de fondos</Dialog.Title>
           <Dialog.Content>
@@ -240,9 +251,11 @@ export default function Cartera() {
         </Dialog>
       </Portal>
 
-      <Button onPress={() => router.push('/informes/flujo')} style={{ marginBottom: 20 }}>
-        Ver flujo de caja
-      </Button>
+      <Boton
+        titulo="Ver flujo de caja"
+        tono="suave"
+        onPress={() => router.push('/informes/flujo')}
+      />
     </Pantalla>
   );
 }
