@@ -1,6 +1,6 @@
 /** Orden de trabajo: recibir la moto, anotar el trabajo y facturarla. */
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Alert, View } from 'react-native';
 import { Button, Dialog, IconButton, Portal, Text } from 'react-native-paper';
 
@@ -66,28 +66,35 @@ export default function OrdenTrabajo() {
   const [formaPago, setFormaPago] = useState<FormaPago>('contado');
   const [metodo, setMetodo] = useState<MetodoPago>('efectivo');
 
-  useEffect(() => {
-    if (!orden) return;
-    setClienteId(orden.cliente_id);
-    setMotoId(orden.moto_id);
-    setKm(orden.km ? String(orden.km) : '');
-    setEstado(orden.estado);
-    setMecanico(orden.mecanico ?? '');
-    setDiagnostico(orden.diagnostico ?? '');
-    setNotas(orden.notas ?? '');
-    setItems(
-      orden.items.map((i, indice) => ({
-        clave: `i${i.id}-${indice}`,
-        tipo: i.tipo,
-        producto_id: i.producto_id,
-        servicio_id: i.servicio_id,
-        descripcion: i.descripcion,
-        cantidad: i.cantidad,
-        precio_unit: i.precio_unit,
-        iva_pct: i.iva_pct,
-      })),
-    );
-  }, [orden]);
+  // El formulario se rellena cada vez que llega una version nueva de la orden.
+  // Se ajusta durante el render (no en un efecto) para no pintar un formulario
+  // vacio antes de rellenarlo. Arranca en undefined para rellenar tambien
+  // cuando la orden ya venia en cache.
+  const [origen, setOrigen] = useState<typeof orden>(undefined);
+  if (orden !== origen) {
+    setOrigen(orden);
+    if (orden) {
+      setClienteId(orden.cliente_id);
+      setMotoId(orden.moto_id);
+      setKm(orden.km ? String(orden.km) : '');
+      setEstado(orden.estado);
+      setMecanico(orden.mecanico ?? '');
+      setDiagnostico(orden.diagnostico ?? '');
+      setNotas(orden.notas ?? '');
+      setItems(
+        orden.items.map((i, indice) => ({
+          clave: `i${i.id}-${indice}`,
+          tipo: i.tipo,
+          producto_id: i.producto_id,
+          servicio_id: i.servicio_id,
+          descripcion: i.descripcion,
+          cantidad: i.cantidad,
+          precio_unit: i.precio_unit,
+          iva_pct: i.iva_pct,
+        })),
+      );
+    }
+  }
 
   if (!esNueva && isLoading)
     return (

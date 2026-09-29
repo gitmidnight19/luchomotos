@@ -1,6 +1,6 @@
 /** Configuracion: datos del taller, parametros contables y servidor. */
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Alert, View } from 'react-native';
 import { Button, Text } from 'react-native-paper';
 
@@ -38,9 +38,13 @@ export default function Configuracion() {
 
   const [valores, setValores] = useState<Record<string, string>>({});
 
-  useEffect(() => {
+  // Se rellena durante el render cuando llega otra version de la configuracion
+  // (ver app/orden/[id].tsx).
+  const [origen, setOrigen] = useState<typeof data>(undefined);
+  if (data !== origen) {
+    setOrigen(data);
     if (data) setValores(data);
-  }, [data]);
+  }
 
   if (isLoading || !data)
     return (

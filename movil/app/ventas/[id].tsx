@@ -1,6 +1,6 @@
 /** Factura: detalle, abonos y anulacion. */
 import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Alert, Share, View } from 'react-native';
 import { Button, Dialog, Portal, Text } from 'react-native-paper';
 
@@ -34,9 +34,13 @@ export default function Factura() {
   const [monto, setMonto] = useState('0');
   const [metodo, setMetodo] = useState<MetodoPago>('efectivo');
 
-  useEffect(() => {
+  // El monto a cobrar sigue al saldo cada vez que llega otra version de la
+  // venta (ver app/orden/[id].tsx).
+  const [origen, setOrigen] = useState<typeof venta>(undefined);
+  if (venta !== origen) {
+    setOrigen(venta);
     if (venta) setMonto(String(enPesos(venta.saldo)));
-  }, [venta]);
+  }
 
   if (isLoading || !venta)
     return (

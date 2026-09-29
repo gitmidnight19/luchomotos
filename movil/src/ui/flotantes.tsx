@@ -65,14 +65,14 @@ export function useSueloAccion(dock?: boolean) {
 /** Sin hover, la retroalimentacion es el estado presionado: el flotante cede. */
 function usePresion(minimo = 0.94) {
   const escala = useSharedValue(1);
-  const estilo = useAnimatedStyle(() => ({ transform: [{ scale: escala.value }] }));
+  const estilo = useAnimatedStyle(() => ({ transform: [{ scale: escala.get() }] }));
   return {
     estilo,
     onPressIn: () => {
-      escala.value = withSpring(minimo, { damping: 18, stiffness: 320 });
+      escala.set(withSpring(minimo, { damping: 18, stiffness: 320 }));
     },
     onPressOut: () => {
-      escala.value = withSpring(1, { damping: 15, stiffness: 260 });
+      escala.set(withSpring(1, { damping: 15, stiffness: 260 }));
     },
   };
 }

@@ -20,13 +20,12 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.taller.contable",
-      "edgeToEdgeEnabled": true,
       "userInterfaceStyle": "automatic"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": ["expo-router", "expo-font"],
+    "plugins": ["expo-router", "expo-font", "expo-status-bar"],
     "scheme": "tallercontable",
     "backgroundColor": "#F2F2F7",
     "primaryColor": "#B11212"

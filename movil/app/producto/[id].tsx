@@ -1,6 +1,6 @@
 /** Ficha del repuesto: datos, kardex y ajuste de existencias. */
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Alert, View } from 'react-native';
 import { Button, Dialog, Portal, Text } from 'react-native-paper';
 
@@ -67,16 +67,21 @@ export default function FichaProducto() {
   const [cantidadAjuste, setCantidadAjuste] = useState('0');
   const [notaAjuste, setNotaAjuste] = useState('');
 
-  useEffect(() => {
-    if (!producto) return;
-    setNombre(producto.nombre);
-    setSku(producto.sku ?? '');
-    setCategoriaId(producto.categoria_id);
-    setPrecio(String(enPesos(producto.precio_venta)));
-    setMinimo(String(producto.stock_min));
-    setUbicacion(producto.ubicacion ?? '');
-    setCantidadAjuste(String(producto.stock));
-  }, [producto]);
+  // Se rellena durante el render cuando llega otra version del producto (ver
+  // app/orden/[id].tsx). Arranca en undefined para rellenar tambien desde cache.
+  const [origen, setOrigen] = useState<typeof producto>(undefined);
+  if (producto !== origen) {
+    setOrigen(producto);
+    if (producto) {
+      setNombre(producto.nombre);
+      setSku(producto.sku ?? '');
+      setCategoriaId(producto.categoria_id);
+      setPrecio(String(enPesos(producto.precio_venta)));
+      setMinimo(String(producto.stock_min));
+      setUbicacion(producto.ubicacion ?? '');
+      setCantidadAjuste(String(producto.stock));
+    }
+  }
 
   if (!esNuevo && !producto && inventario) {
     return (

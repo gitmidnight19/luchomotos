@@ -1,7 +1,7 @@
 # Capa 2 · App móvil (`movil/`)
 
-Hereda [`00-fundamentos.md`](./00-fundamentos.md). Stack: Expo SDK 54 / React
-Native 0.81, `expo-router`, `react-native-paper`, `expo-blur`,
+Hereda [`00-fundamentos.md`](./00-fundamentos.md). Stack: Expo SDK 57 / React
+Native 0.86, `expo-router`, `react-native-paper`, `expo-blur`,
 `react-native-reanimated`, `react-native-safe-area-context`.
 
 La app se usa **en el taller**: de pie, con una mano, con las manos sucias, con
@@ -92,18 +92,27 @@ para que se vea igual.
 
 ### Dock inferior flotante
 
-Cinco destinos: **Panel · Vender · Órdenes · Inventario · Más**. Cinco es el
+Cinco destinos: **Panel · Órdenes · Vender · Inventario · Más**. Cinco es el
 techo; un sexto destino va dentro de *Más*.
 
+**Vender va al centro, como botón.** Sale de la fila y sube como círculo de
+marca: es la acción que más se repite en el mostrador, y al centro queda bajo
+el pulgar con cualquiera de las dos manos. Los otros cuatro van **siempre
+rotulados** —en el teléfono no hay hover que diga qué es un icono— y el activo
+se pinta en `dockActivo` con el rótulo en 800.
+
 ```
-alto del cuerpo   = 12 (padding glass) × 2 + 60 (interior) = 84
-píldora activa    52 de alto, se expande con el rótulo
+alto del cuerpo   = 6 (padding vertical) × 2 + 60 (interior) = 72
+botón central     círculo 60, `marca` sólido, icono 28 en `sobreMarca`
+                  anillo de 4 px del color de `fondo`, sombra de marca
+                  sobresale 22 por encima del vidrio
+rótulos           11 px / 600 (800 el activo); «Vender» alineado con sus vecinos
 icono             24
 márgenes wrapper  14 horizontal · 10 superior
 ```
 
 El **solape** que una pantalla debe reservar abajo es
-`10 + 84 + max(safeArea.bottom, 12 iOS / 10 Android)`. Lo calcula
+`10 + 22 + 72 + max(safeArea.bottom, 12 iOS / 10 Android)`. Lo calcula
 `useSolapeDock()`; no se escribe a mano: un número mágico local rompe en el
 primer teléfono con otra barra de gestos.
 

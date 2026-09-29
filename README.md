@@ -4,7 +4,7 @@ Sistema contable de doble partida para un taller de motos. API HTTP + cliente
 móvil, con SQLite como almacén.
 
 ```
-movil/     Expo SDK 54 · React Native · TypeScript · expo-router · TanStack Query
+movil/     Expo SDK 57 · React Native · TypeScript · expo-router · TanStack Query
    │       consume el contrato generado de OpenAPI
    ▼
 backend/   FastAPI · Pydantic v2 · SQLAlchemy 2.0 · Alembic

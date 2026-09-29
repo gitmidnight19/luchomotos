@@ -1,13 +1,16 @@
 # Contexto para agentes y nuevos desarrolladores
 
-## El SDK está fijado en 54 a propósito
+## El SDK lo manda Expo Go
 
-`package.json` apunta a `expo ~54.0.37` / `react-native 0.81.5`. **No lo suba.**
+`package.json` apunta a `expo ~57.0.25` / `react-native 0.86.3`, el SDK que
+abre el Expo Go instalado en los teléfonos del taller. Expo Go solo abre **un**
+SDK: si el proyecto y la app del teléfono no coinciden, falla al abrir con
+*"Project is incompatible with this version of Expo Go"*. Suba o baje el SDK
+para igualar al teléfono, no al revés.
 
-Expo Go de las tiendas va uno o dos SDK por detrás del publicado en npm. Con
-SDK 56 o 57 la app falla al abrir con *"Project is incompatible with this
-version of Expo Go"*. Para subir de SDK hay que dejar Expo Go y pasar a
-development builds (EAS).
+Para subir de SDK: `npm install expo@~<versión>` y luego `npx expo install --fix`.
+Desde el 57, `expo-router` trae su propia copia de React Navigation: los tipos
+de pestañas se importan de `expo-router/tabs`, no de `@react-navigation/*`.
 
 Al tocar dependencias nativas, usar siempre `npx expo install <paquete>` (elige
 la versión compatible con el SDK) y verificar con `npx expo-doctor`.

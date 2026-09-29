@@ -35,11 +35,11 @@ function Bloque({
   const p = useSharedValue(0);
 
   useEffect(() => {
-    p.value = withRepeat(withTiming(1, { duration: 900 }), -1, true);
+    p.set(withRepeat(withTiming(1, { duration: 900 }), -1, true));
   }, [p]);
 
   const animado = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(p.value, [0, 1], [c.brilloBase, c.brilloAlto]),
+    backgroundColor: interpolateColor(p.get(), [0, 1], [c.brilloBase, c.brilloAlto]),
   }));
 
   return (
@@ -194,12 +194,12 @@ function Punto({ indice, color }: { indice: number; color: string }) {
 
   useEffect(() => {
     const id = setTimeout(() => {
-      p.value = withRepeat(withTiming(1, { duration: 480 }), -1, true);
+      p.set(withRepeat(withTiming(1, { duration: 480 }), -1, true));
     }, indice * 160);
     return () => clearTimeout(id);
   }, [p, indice]);
 
-  const animado = useAnimatedStyle(() => ({ opacity: p.value }));
+  const animado = useAnimatedStyle(() => ({ opacity: p.get() }));
 
   return <Animated.View style={[e.punto, { backgroundColor: color }, animado]} />;
 }

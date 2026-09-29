@@ -53,7 +53,7 @@ export default function Gastos() {
     [cuentas],
   );
 
-  const activos = data.filter((g) => g.estado === 'activo');
+  const activos = useMemo(() => data.filter((g) => g.estado === 'activo'), [data]);
   const total = activos.reduce((s, g) => s + g.monto, 0);
   const porConcepto = useMemo(() => {
     const mapa = new Map<string, number>();
