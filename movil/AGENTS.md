@@ -2,7 +2,7 @@
 
 ## El SDK lo manda Expo Go
 
-`package.json` apunta a `expo ~57.0.25` / `react-native 0.86.3`, el SDK que
+`package.json` apunta a `expo ^58.0.19` / `react-native 0.88.0`, el SDK que
 abre el Expo Go instalado en los teléfonos del taller. Expo Go solo abre **un**
 SDK: si el proyecto y la app del teléfono no coinciden, falla al abrir con
 *"Project is incompatible with this version of Expo Go"*. Suba o baje el SDK

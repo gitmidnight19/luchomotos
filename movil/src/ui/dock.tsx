@@ -59,7 +59,7 @@ type Destino = {
 };
 
 /** Lo que el dock necesita de cada ruta, con la logica de navegacion ya resuelta. */
-function destinos({ state, descriptors, navigation }: BottomTabBarProps): Destino[] {
+function destinos({ state, descriptors, emitter, navigateToTab }: BottomTabBarProps): Destino[] {
   return state.routes.map((ruta, i) => {
     const { options } = descriptors[ruta.key];
     const activo = state.index === i;
@@ -70,12 +70,12 @@ function destinos({ state, descriptors, navigation }: BottomTabBarProps): Destin
       activo,
       icono: (color, size) => options.tabBarIcon?.({ focused: activo, color, size }),
       ir: () => {
-        const evento = navigation.emit({
+        const evento = emitter.emit({
           type: 'tabPress',
           target: ruta.key,
           canPreventDefault: true,
         });
-        if (!activo && !evento.defaultPrevented) navigation.navigate(ruta.name);
+        if (!activo && !evento.defaultPrevented) navigateToTab(ruta.key);
       },
     };
   });
